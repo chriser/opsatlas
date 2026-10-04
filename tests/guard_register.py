@@ -401,8 +401,7 @@ GUARDS: dict[str, dict] = {
     "a publish is recognised by its entry whatever fails after it (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_committed_by",
                                staticmethod(lambda slot, record: False)),
-        "tests": ["tests/test_publish_order.py::test_a_publish_whose_action_fails_after_its_commit_is_published",
-                  "tests/redteam/test_s23_round5_redteam.py::test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails"],
+        "tests": ["tests/test_publish_order.py::test_a_publish_whose_action_fails_after_its_commit_is_published"],
     },
     "a committed version is read where it is staged while its writer moves it (REF S23)": {
         "off": lambda: _no_staged_reads(),

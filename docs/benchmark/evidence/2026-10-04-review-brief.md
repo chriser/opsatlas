@@ -40,7 +40,7 @@ python -m pytest -p no:cacheprovider -W ignore -rA tests/test_guards_proven.py  
 python -m pytest -p no:cacheprovider -W ignore -q --deselect tests/test_guards_proven.py
 ```
 
-The full suite passes with expected failures only: the stated limits (strict) and REF S24's open findings (strict).
+The full suite passes with expected failures only: the stated limits (strict) and REF S58's open findings (strict).
 `tests/test_ontology_store.py::test_synthetic_scale_1000_objects_runs_under_two_seconds` is a timing test that fails
 under load and passes alone.
 
@@ -56,15 +56,26 @@ under load and passes alone.
 
 ## Going live, after the review
 
-Claude runs it (the Human's decision, 4 October 2026), in this order:
+Claude runs it (the Human's decision, 4 October 2026), with the re-review's refinements (N1):
 1. Tag the current live state (`live-2026-10-03b` is the live commit `1b9bc23`).
-2. Stop the core and copy the live workspace's data folder, `.runtime/opsatlas-sales` (all spaces, about 18 MB). On its
-   first start the new code stamps every old passages file with its text's fingerprint, a format the live code cannot
-   read (the first independent review's R1): **the way back is the tag plus this copy**, never the tag alone.
-3. Set aside untracked files in the live folder that `main` tracks (the local-avatar documents and experiments, and
-   `.claude/agents/independent-reviewer.md`), after comparing them; nothing is deleted.
-4. Merge the reviewed branch into `main`; move the live folder to `main`.
-5. Rebuild the panel (`npx vite build`): the governance page and the document page send the text they decide on.
-6. Start the core. Tibi's voice service needs no restart: its engine fingerprint (`f7705b59aa1f`) and its runtime
-   imports are unchanged (confirmed by the independent review).
-7. Check that the core, the panel and Tibi respond, then tag `main` as the new live state and report.
+2. Stop the core through launchd (`launchctl bootout gui/$UID/com.opsatlas.tiberius-sales.core`: its KeepAlive would
+   restart a killed process) and confirm port 8780 is closed.
+3. Copy the live workspace, `.runtime/opsatlas-sales` (about 18 MB). On its first start the new code stamps every old
+   passages file in a format the live code cannot read (the first review's R1).
+4. Check that every passages file and every governed-statements file parses: an unreadable one now stops start-up (R7).
+5. Set aside untracked files in the live folder that the new commit tracks, after comparing them; nothing is deleted.
+6. Fast-forward the live folder to the reviewed commit, and merge it into `main`. (The live folder moves onto `main` at a
+   later go-live: on 4 October someone was working in the live folder on local-avatar files that `main` tracks in older
+   versions.)
+7. Rebuild the panel (`npx vite build` in `frontend/`): the governance page and the document page send the text they
+   decide on.
+8. Start the core (`launchctl bootstrap gui/$UID <its plist>`). Tibi's voice service needs no restart: its engine
+   fingerprint (`f7705b59aa1f`) and its runtime imports are unchanged.
+9. Check that the core, the panel and Tibi respond and that the start-up log is clean; tag the live commit
+   `live-2026-10-04` and report.
+
+**The way back:** stop the core; move the live folder back to `live-2026-10-03b`; restore the document data from the copy
+(`core/`, `spaces/`, `spaces.json`, `workspace.json`), not `iam.db` (access changes since would be undone) and not
+`voice/` (Tibi's data); rebuild the panel at the tag (`frontend/dist` is not in git); start the core. It is lossless
+only until the first write on the new version; after that, convert the passages files back or re-ingest on the old
+code.
