@@ -10,6 +10,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from ..iam.visibility import visible
 from ..process.coverage import build_operating_model_coverage, build_process_gap_overlap_report
 from ..process.diagram import (
     ProcessDiagramClient,
@@ -97,7 +98,9 @@ def build_process_router(
 
     @router.post("/diagrams/resolve", response_model=ProcessDiagramContext, dependencies=[need("processes.diagrams.generate")])
     def resolve_diagram(body: ProcessDiagramResolveRequest) -> ProcessDiagramContext:
-        records = process_registry.derive_from_sources(register)
+        # Only processes from documents this person may read (REF S13, Bug #2191): derived_guard covers the GET views,
+        # and this POST reads them too.
+        records = [r for r in process_registry.derive_from_sources(register) if visible(r.source_id)]
         return resolve_process_diagram(body, records, local_diagram_client)
 
     @router.get("/diagrams/service/status", response_model=ProcessDiagramServiceStatus)

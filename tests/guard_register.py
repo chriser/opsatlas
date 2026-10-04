@@ -169,6 +169,11 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _off("assistant.api.access", "derived_guard", lambda request: None),
         "tests": ["tests/test_leak_sweep.py::test_no_role_outside_the_audience_receives_a_marker"],
     },
+    "the diagram route resolves only readable processes (REF S13, Bug #2191)": {
+        "off": lambda: _off("assistant.api.routes_process", "visible", lambda source_id: True),
+        "tests": ["tests/test_bug_2191_diagram_visibility.py::"
+                  "test_a_restricted_documents_process_is_not_resolved_for_a_person_outside_its_audience"],
+    },
     "revoked while prepared (REF S16)": {
         "off": lambda: _off("assistant.api.access", "still_allowed", lambda request, permission: None),
         "tests": ["tests/test_space_leaks.py::test_an_answer_is_withheld_when_access_is_revoked_while_it_is_prepared"],
