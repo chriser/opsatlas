@@ -17,9 +17,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from door_helpers import decide
-from iam_helpers import sign_in
-from test_space_leaks import hermetic, refuse
+from tests.door_helpers import decide  # the same module copies tests/test_workspace_door.py uses
+from tests.iam_helpers import sign_in
+from tests.test_space_leaks import hermetic, refuse
 
 
 @dataclass

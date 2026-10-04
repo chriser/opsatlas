@@ -27,10 +27,7 @@ import pytest  # noqa: E402
 @pytest.fixture
 def sales_workspace(tmp_path, monkeypatch):
     """A hermetic Sales app, signed in, with one organisation space; set state up with its builders (tests/builders.py)."""
-    import sys
-
-    sys.path.insert(0, os.path.dirname(__file__))
-    from builders import sales_workspace as build
+    from tests.builders import sales_workspace as build
 
     with build(tmp_path, monkeypatch) as workspace:
         yield workspace

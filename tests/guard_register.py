@@ -329,9 +329,15 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_boundaries.py::test_a_core_module_importing_the_sales_layer_is_caught",
                   "tests/test_boundaries.py::test_a_new_package_cycle_is_caught"],
     },
+    "no module uses another module's private name (REF S59, the independent review's F1)": {
+        "off": lambda: _off("boundary_rules", "private_violations", lambda found, allowed=None: []),
+        "tests": ["tests/test_boundaries.py::"
+                  "test_a_private_name_taken_from_another_module_is_caught_and_a_gone_one_must_leave_the_list"],
+    },
     "each store is named only by its owner (REF S59)": {
         "off": lambda: _off("boundary_rules", "store_violations", lambda mentions, owners=None, also=None: []),
-        "tests": ["tests/test_boundaries.py::test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance"],
+        "tests": ["tests/test_boundaries.py::test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance",
+                  "tests/test_boundaries.py::test_a_store_named_with_a_folder_or_in_an_f_string_is_caught"],
     },
     "an approval names the text it approves (REF S23, S8)": {
         "off": lambda: _method_off("assistant.sources.register", "SourceRegister", "names_text",
