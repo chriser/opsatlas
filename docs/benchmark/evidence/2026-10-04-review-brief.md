@@ -13,7 +13,7 @@ this review. None of it is live.
 | REF H3b | #2126 | Scope applied to every evidence path of an answer (dates, sites, supersession; one reading per answer) | `2026-10-03-h3b-stop-rule.md`, `2026-10-03-h3b-set-v3.md` |
 | REF S57 (was S23) | #2140 | A staged publish; the workspace's door (one lock per write request, stores check it); approvals decided in the register, naming their text (S8) | `2026-10-04-s23-red-team.md` |
 
-Size: 42 commits; 39 code files (+1,695 −465), 75 test files (+7,748 −128).
+Size at the first review: 44 commits from `1b9bc23`, 76 test files; see `git log 1b9bc23..` for the current range.
 
 ## What to check
 
@@ -56,5 +56,15 @@ under load and passes alone.
 
 ## Going live, after the review
 
-The change is merged into `main`; the live folder moves to `main`, rebuilds the panel (`npx vite build`: the governance page and the document
-page send the text they decide on) and restarts the core. No Tibi engine change: the voice service needs no restart.
+Claude runs it (the Human's decision, 4 October 2026), in this order:
+1. Tag the current live state (`live-2026-10-03b` is the live commit `1b9bc23`).
+2. Stop the core and copy the live workspace's data folder, `.runtime/opsatlas-sales` (all spaces, about 18 MB). On its
+   first start the new code stamps every old passages file with its text's fingerprint, a format the live code cannot
+   read (the first independent review's R1): **the way back is the tag plus this copy**, never the tag alone.
+3. Set aside untracked files in the live folder that `main` tracks (the local-avatar documents and experiments, and
+   `.claude/agents/independent-reviewer.md`), after comparing them; nothing is deleted.
+4. Merge the reviewed branch into `main`; move the live folder to `main`.
+5. Rebuild the panel (`npx vite build`): the governance page and the document page send the text they decide on.
+6. Start the core. Tibi's voice service needs no restart: its engine fingerprint (`f7705b59aa1f`) and its runtime
+   imports are unchanged (confirmed by the independent review).
+7. Check that the core, the panel and Tibi respond, then tag `main` as the new live state and report.

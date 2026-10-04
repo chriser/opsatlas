@@ -219,3 +219,23 @@ def test_a_version_written_without_approval_keeps_the_status_its_writer_saw(acme
         decided(register, sid, approval_status="approved")  # the old text approved, after the writer read its record
         content._write_version(stale, b"# Vault\n\nThe vault code changes every Friday.\n", approve=False)
     assert register.get(sid).approval_status != "approved", "the unapproved version inherited the approval"
+
+
+def test_a_publish_whose_action_fails_after_its_commit_is_published(acme):
+    """The publish action commits (its record names the new version's entry) and then a step inside the action fails,
+    so the engine reports an error: the publish is still published, recognised by its entry, not reported as failed
+    (REF S57, S5)."""
+    core, sid = acme
+    content, register = core.state.content, core.state.register
+    draft = "# Vault\n\nThe vault code changes every Sunday.\n"
+    with writing(core):
+        content.save_draft(sid, draft)
+        content.submit(sid)
+    draft_sha = content.store.document(sid)["draft_sha"]
+    content._after_publish = lambda record: (_ for _ in ()).throw(RuntimeError("a step after the commit failed"))
+    try:
+        result = as_job(core, content.publish, sid, draft_sha)
+    finally:
+        del content._after_publish
+    assert result["version"] == register.get(sid).history_n
+    assert register.read_content(sid, sha=register.get(sid).content_sha256).decode() == draft

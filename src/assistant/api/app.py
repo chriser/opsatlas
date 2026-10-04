@@ -336,10 +336,12 @@ def create_app(
 
 
 # Requests that change nothing a workspace's door guards (REF S23, S7): sign-in and access management (their own
-# store), asks and searches, the avatar and Tibi's channel, service control and the activity log. They never wait for
+# store), asks and searches, Tibi's check of a governance answer (it only reads; the independent review's R3), the
+# avatar and Tibi's channel, service control and the activity log. They never wait for
 # the lock, and the stores prove the list: a governed write from one of them is refused.
 DOOR_PASSES = ("/api/auth", "/api/iam", "/api/ask", "/api/query", "/api/answers", "/api/avatar", "/api/sales/search",
-               "/api/tibi/ws-ticket", "/services/tibi", "/api/services", "/api/activity", "/api/process/diagrams/service")
+               "/api/sales/governance/verify", "/api/tibi/ws-ticket", "/services/tibi", "/api/services", "/api/activity",
+               "/api/process/diagrams/service")
 
 
 # No module-level app (AUDIT F5): importing this module built a second core, with a stray iam.db in the data folder.

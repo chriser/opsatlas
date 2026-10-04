@@ -9,6 +9,7 @@ without duplicating their business logic.
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from collections.abc import Callable
@@ -229,18 +230,33 @@ class ActionsEngine:
             message=message,
             result=result,
         )
-        self.action_log.append(execution)
+        note = self._record(execution)
         return ActionExecutionResult(
             execution_id=execution.execution_id,
             action=execution.action,
             outcome=execution.outcome,
             validation_results=execution.validation_results,
             failed_rule=execution.failed_rule,
-            message=execution.message,
+            message=execution.message + note,
             result=execution.result,
             duration_ms=execution.duration_ms,
             timestamp=execution.timestamp,
         )
+
+    def _record(self, execution: ActionExecution) -> str:
+        """The audit record, a step after the decision (REF S57, the independent review's R2): when it cannot be written
+        for an action that took effect, the decision is not reported as failed; the failure is logged and said in the
+        result's message. An action that did not take effect still fails as before."""
+        try:
+            self.action_log.append(execution)
+            return ""
+        except Exception as exc:
+            if execution.outcome != "ok":
+                raise
+            logging.getLogger("assistant.ontology").error(
+                "Action %s (%s) took effect, but its audit record could not be written: %s",
+                execution.action, execution.execution_id, str(exc)[:300])
+            return " The action took effect, but its audit record could not be written."
 
     def _coerce_and_validate_params(
         self,

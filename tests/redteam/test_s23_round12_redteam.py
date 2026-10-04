@@ -54,7 +54,6 @@ def _activity_actions(core, sid) -> list[str]:
 
 # ---- S8 / S5: a decision that took effect is reported refused when the action log's write fails -------------------
 
-@STATED_LIMIT
 def test_s23_round12_content_approve_reported_failed_after_it_took_effect(acme, monkeypatch):
     """One ordinary fault (the action log's append fails) after the approve_source handler has decided: the content
     route reports an error, yet the document is approved, and its activity never records the approval."""
@@ -72,7 +71,6 @@ def test_s23_round12_content_approve_reported_failed_after_it_took_effect(acme, 
             f"activity: {_activity_actions(core, sid)}")
 
 
-@STATED_LIMIT
 def test_s23_round12_governance_approve_reported_failed_after_it_took_effect(acme, monkeypatch):
     """The same fault on the governance route (the reviewer's page): an error is shown for a change that was made."""
     client, app, core, sid = acme

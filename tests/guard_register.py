@@ -345,6 +345,12 @@ GUARDS: dict[str, dict] = {
                   "tests/redteam/test_s23_round11_redteam.py::"
                   "test_s23_round11_dispute_refused_after_a_side_effect_fault_changes_nothing"],
     },
+    "an action's decision stands whatever its audit write does (REF S57, the independent review's R2)": {
+        "off": lambda: _method_off("assistant.ontology.actions", "ActionsEngine", "_record",
+                                   lambda self, execution: self.action_log.append(execution) or ""),
+        "tests": ["tests/redteam/test_s23_round12_redteam.py::test_s23_round12_content_approve_reported_failed_after_it_took_effect",
+                  "tests/redteam/test_s23_round12_redteam.py::test_s23_round12_governance_approve_reported_failed_after_it_took_effect"],
+    },
     "a failed records step is tried again (REF S23, S5)": {
         "off": lambda: _method_off("assistant.content.service", "ContentService", "retry_records",
                                    lambda self, source_id: True),
@@ -395,7 +401,8 @@ GUARDS: dict[str, dict] = {
     "a publish is recognised by its entry whatever fails after it (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_committed_by",
                                staticmethod(lambda slot, record: False)),
-        "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails"],
+        "tests": ["tests/test_publish_order.py::test_a_publish_whose_action_fails_after_its_commit_is_published",
+                  "tests/redteam/test_s23_round5_redteam.py::test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails"],
     },
     "a committed version is read where it is staged while its writer moves it (REF S23)": {
         "off": lambda: _no_staged_reads(),

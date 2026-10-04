@@ -356,3 +356,21 @@ def test_a_decision_stands_when_a_step_after_it_fails(sales):
     assert core.state.register.get(source_id).approval_status == "approved"
     noted = client.get("/api/ontology/actions/log", headers=ACME).json()["executions"][0]
     assert noted["outcome"] == "ok" and "record_analytics_event" in noted["message"]
+
+
+def test_tibis_check_of_a_governance_answer_passes_the_door(sales):
+    """Tibi checks a governance answer before proposing it; the check only reads, so it passes the door and never waits
+    behind a writer (the independent review's R3)."""
+    from assistant.api.app import DOOR_PASSES
+    app, client, root = sales
+    door = WriteDoor(None, root / "workspace", passes=DOOR_PASSES)
+    assert door.opens_for({"type": "http", "method": "POST", "path": "/api/sales/governance/verify"}) is None
+    release, holder = _hold(root)
+    try:
+        finished, out = _within(5, lambda: client.post("/api/sales/governance/verify", json={
+            "issue_key": "none", "resolution": {}, "answer": "x"}).status_code)
+        assert finished, "the check waited for a writer's lock"
+        assert out["value"] in (403, 409), out
+    finally:
+        release.set()
+        holder.join(5)
