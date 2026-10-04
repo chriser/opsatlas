@@ -143,9 +143,23 @@ def test_a_file_level_mark_for_the_private_member_check_is_caught():
         "assistant.answer.line": ("X = other._private  # noqa: SLF001\n", False),
         "services.sme_interviewer.x": ("# ruff: noqa: SLF001\nX = 1\n", False),
     }
+    modules["assistant.answer.docstring"] = ('"""How to hide a reach-in: # ruff: noqa: SLF001"""\nX = 1\n', False)
     assert rules.file_level_marks(modules, {"scripts/tool.py": "# ruff: noqa: SLF001\n"}) == [
         "assistant.answer.blanket: # ruff: noqa", "assistant.answer.named: #ruff: noqa: E501, SLF001",
         "scripts/tool.py: # ruff: noqa: SLF001"]
+
+
+@pytest.mark.parametrize("form", [
+    "# ruff: noqa", "# ruff: noqa: SLF001", "#ruff: noqa: E501, SLF001", "    # ruff: noqa: SLF001",
+    "# flake8: noqa", "# flake8: noqa: SLF001", "# ruff: noqa: SLF001 -- a reason", "# ruff: noqa: SLF001  # a reason",
+    "# ruff: noqa: SLF001 (legacy)", "# ruff: noqa: E501"])
+def test_every_file_wide_mark_ruff_honours_is_caught(form):
+    """Ruff is the oracle (its independent review's F1): where a form lets a reach-in in the file pass ruff, the check
+    flags the file. A form ruff does not honour for the check (another rule's code) need not be flagged."""
+    source = f"{form}\ndef probe(other):\n    return other._private\n"
+    honoured = "SLF001" not in _ruff("src/assistant/answer/probe_boundary.py", source)
+    flagged = bool(rules.file_level_marks({"assistant.answer.probe": (source, False)}))
+    assert flagged or not honoured, f"ruff honours {form!r}, and the check does not flag it"
 
 
 def test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance():

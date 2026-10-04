@@ -10,10 +10,11 @@ nothing in the running app.
 
 They cover all production code: every module under `src/` (the core, `assistant`, and any new package there) and under
 `services/` (the Sales layer and Tibi's engine). Tooling that does not run in the app, `scripts/` and `evaluation/`, is
-outside the rules in `tests/boundary_rules.py`; ruff's private-member check covers `scripts/`, and its two mark rules
-cover both. Today `scripts/evaluate_evidence.py` takes four private names of `rag_vs_oag`, and the scripts name 29
-stores owned elsewhere (most in `data_reset.py`, which resets the core's store files). Whether to bring the tooling
-under the rules, with allow-lists of its own, is on REF S65 #2176.
+outside the import, private-name and store rules in `tests/boundary_rules.py`. The file-level mark check reads the
+scripts too, and ruff's private-member check and its two mark rules cover them. `automation/` and `experiments/` are
+outside the AST checks. Today `scripts/evaluate_evidence.py` takes four private names of `rag_vs_oag`, and the
+scripts name 29 stores owned elsewhere (most in `data_reset.py`, which resets the core's store files). Whether to
+bring the tooling under the rules is parked for the Human, with a recommendation (REF S65).
 
 | Rule | Where | Today |
 |---|---|---|
@@ -82,7 +83,10 @@ allowed one that has **gone**: remove it from its list, or remove the mark, so t
 The checks read the code's text; they do not run it. These forms pass without any check firing. The independent
 reviews' tests pin each one down. Where one is used in production today, it is said below; the others are not used
 (the re-review's scan, 4 October). A change that uses one should say so in its design. Two that S59's re-review found
-are closed (REF S65 #2176): a file-level mark, and a store named in a SQLite URI.
+are closed (REF S65 #2176): a store named in a SQLite URI, and a file-wide mark for the private-member check. The
+mark check reads comments only and takes every form ruff honours (the ruff or flake8 prefix, indented, words after
+the codes), proven against ruff itself. It fails closed: a comment in another case, or with lower-case codes, is
+flagged too.
 
 - **Imports.**
   - An import whose module is computed, such as `import_module(name)` with a variable. An import named by a string
@@ -105,6 +109,10 @@ are closed (REF S65 #2176): a file-level mark, and a store named in a SQLite URI
     - a name built with `with_suffix`. Used today: `eval/oag_coverage.py` and `eval/rag_vs_oag.py`;
     - a fully computed name (`f"sales-{kind}.json"`). Used today: `analytics/oag_benchmark.py` globs the
       `rag-vs-oag-*.json` reports that `rag_vs_oag` writes.
+  - A store opened through a variable path, such as the engine's latency report's read-only SQLite URI
+    (`f'file:{path}?mode=ro'`): the name is not in the code.
+  - A string ending in a file name counts as naming it, a URL with a query or a message included: such a string fails
+    closed, as an undeclared store or a crossing.
   - Stores that are folders (`sources/`, `sections/`, `content/assets`), and other file types (the workspace's
     `.lock`, `.md` and `.txt` sources, `.csv` exports).
   - Ownership is by file name. Different files that share a generic name (`config.json`, `report.json`,
