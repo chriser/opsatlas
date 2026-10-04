@@ -14,7 +14,7 @@ from tests.door_helpers import decide, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
-pytestmark = pytest.mark.xfail(strict=True, reason="REF S23 round 10: the stop rule on approvals, third time; awaiting the Human's decision")
+pytestmark = pytest.mark.xfail(strict=True, reason="REF S23 round 10: the stop rule on approvals; awaiting the Human's decision")
 
 
 def sha(data) -> str:
