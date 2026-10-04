@@ -30,9 +30,9 @@ from .access import current_actor, need
 
 
 def names_current(record, named: str | None) -> bool:
-    """Whether a decision names the record's current text (REF S23, S8): its SHA-256. None names nothing (a withdrawal
-    by the workspace, which only rejects)."""
-    return named is None or (record is not None and record.content_sha256 == named)
+    """Whether a decision names the record's current text (REF S23, S8): its SHA-256. Every approval and rejection
+    names one, a withdrawal by the workspace included (red team round 8)."""
+    return named is not None and record is not None and record.content_sha256 == named
 
 
 class Decision(BaseModel):
@@ -105,7 +105,6 @@ def build_governance_router(
     def _validate_names_current_text(context: ActionContext) -> ValidationResult:
         """An approval names the text it approves (REF S23, S8): the record's text must still be that one. Checked under
         the workspace's lock, taken at the door, so no new version can land between this check and the decision."""
-        # None: a withdrawal by the workspace (reject only: approve_source requires the parameter).
         if names_current(register.get(str(context.params.get("source_id", ""))), context.params.get("sha")):
             return ValidationResult(rule="names_current_text", passed=True, message="The text named is the current one.")
         return ValidationResult(rule="names_current_text", passed=False,

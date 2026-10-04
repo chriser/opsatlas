@@ -262,7 +262,11 @@ def attach(content, knowledge, desk, library=True) -> None:
 
     def retitle(source, title):
         row = record_of(source.id, knowledge.records())
-        return None if row is None else f"# {title}\n\n{row['text']}\n"
+        if row is None:
+            return None
+        # The live document's own text under the new title, not the record's copy: after a records step that failed
+        # (REF S23, S5) the copy can be older than the document (red team round 8).
+        return f"# {title}\n\n{parse_record(content.record_text(source))[1]}\n"
 
     def default_library():
         rows = knowledge.records()

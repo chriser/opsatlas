@@ -138,7 +138,7 @@ def test_describe_for_llm_snapshot() -> None:
         "Action types:",
         "- rebuild_ontology (custom); params=none; approval=false.",
         "- approve_source (update); params=source_id:string*, sha:string*; approval=true.",
-        "- reject_source (update); params=source_id:string*, sha:string; approval=true.",
+        "- reject_source (update); params=source_id:string*, sha:string*; approval=true.",
         "- accept_issue (custom); params=source_id:string*, check:string*, detail:string*; approval=true.",
         "- publish_version (update); params=source_id:string*, sha:string*; approval=true.",
         "- save_document (update); params=source_id:string*, text:string*; approval=true.",

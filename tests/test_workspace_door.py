@@ -284,3 +284,19 @@ def test_the_approve_action_names_the_text_too(sales):
                         headers=ACME).json()
     assert named["outcome"] == "ok", named
     assert register.get(source_id).approval_status == "approved"
+
+
+def test_a_rename_that_would_change_the_text_is_refused(sales):
+    """A rename changes the title and nothing else (S1, S8, red team round 8): where the workspace's title hook would
+    write a different body (a stale copy of the record), the rename is refused and the live approved text stands."""
+    app, client, root = sales
+    core, source_id = _document(app)
+    register, content = core.state.register, core.state.content
+    before = register.read_content(source_id)
+    content.hooks["retitle"] = lambda source, title: f"# {title}\n\nAn older body nobody approved.\n"
+    try:
+        refused = client.post(f"/api/content/documents/{source_id}/rename", json={"title": "Prices"}, headers=ACME)
+    finally:
+        content.hooks["retitle"] = None
+    assert refused.status_code == 409, refused.text
+    assert register.read_content(source_id) == before and register.get(source_id).approval_status == "approved"

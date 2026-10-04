@@ -214,10 +214,10 @@
     {
       "api_name": "reject_source",
       "display_name": "Reject Source",
-      "description": "Reject a registered knowledge source so it is excluded from approved retrieval and process extraction. A person's rejection names the text rejected (its SHA-256); a withdrawal by the workspace names none, so it always succeeds (REF S23, S8).",
+      "description": "Reject a registered knowledge source so it is excluded from approved retrieval and process extraction. The rejection names the text rejected (its SHA-256), a withdrawal by the workspace included (REF S23, S8, red team round 8).",
       "parameters": [
         { "name": "source_id", "type": "string" },
-        { "name": "sha", "type": "string", "required": false }
+        { "name": "sha", "type": "string" }
       ],
       "validation_rules": ["auth_required", "source_exists", "names_current_text", "not_already_rejected"],
       "edit_kind": "update",

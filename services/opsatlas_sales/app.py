@@ -103,8 +103,9 @@ def _build(root):
         restored (KS S7): the router serves it at once, without a restart."""
         partition = spaces.partition(space_id)
         partition.mkdir(parents=True, exist_ok=True)
-        cores[space_id] = create_app(register=SourceRegister(partition), auth=app.state.auth, space_id=space_id)
-        _govern(cores[space_id])
+        core = create_app(register=SourceRegister(partition), auth=app.state.auth, space_id=space_id)
+        _govern(core)  # governed by the workspace's lock before the router can reach it (red team round 8)
+        cores[space_id] = core
 
     for space in spaces.active():  # an archived space keeps its data but is not served
         if space['id'] != PRODUCT:

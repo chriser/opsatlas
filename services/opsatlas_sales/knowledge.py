@@ -53,7 +53,8 @@ class Knowledge:
             return
         if self.actions:
             from assistant.ontology.actions import acting_person
-            result = self.actions.execute('reject_source', {'source_id': source_id}, acting_person('service:workspace-key'))
+            result = self.actions.execute('reject_source', {'source_id': source_id, 'sha': source.content_sha256},
+                                          acting_person('service:workspace-key'))  # the text it withdraws (S8)
             if result.outcome == 'ok':
                 return
         self.register.update(source_id, approval_status='rejected')

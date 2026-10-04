@@ -18,8 +18,9 @@ swap, before the record is written; a committed version whose move into place fa
 (a crash: the next writer settles it); an earlier text published again (a restore); a history entry written but
 reported failed; the event store down;
 two publishes at once; a details edit during a publish; a reader during a publish; a write without the lock; an
-approval of a version superseded since it was read. The red teams' findings (REF H3b rounds 5 and 6; REF S23 rounds 1
-to 7) are kinds here. A publish here is a job: it holds the workspace's lock, as a request does.
+approval of a version superseded since it was read; a rename whose title hook would change the text; a decision on a
+file replaced outside content management; a rejection naming no text. The red teams' findings (REF H3b rounds 5 and
+6; REF S23 rounds 1 to 8) are kinds here. A publish here is a job: it holds the workspace's lock, as a request does.
 """
 import hashlib
 import os
@@ -120,7 +121,8 @@ def one_run(run, client, core, sid, live):
         kind = run.rng.choice(["publish", "publish", "unreadable", "fail-text", "fail-passages", "fail-record",
                                "reader-inside", "rebuild-inside", "two-at-once", "edit-during", "move-fails",
                                "crash-after-commit", "restore", "history-lands-then-fails", "events-down",
-                               "read-while-writing", "write-without-lock", "approve-superseded"])
+                               "read-while-writing", "write-without-lock", "approve-superseded",
+                               "rename-changes-text", "decide-on-replaced-file", "reject-unnamed"])
         run.step(kind, marker)
         if kind == "publish":
             ok = publish(text)
@@ -224,6 +226,35 @@ def one_run(run, client, core, sid, live):
             named = client.post(f"/api/governance/sources/{sid}/approve", json={"sha": register.get(sid).content_sha256},
                                 headers=HEAD)
             run.promise("an approval naming the current text is applied", named.status_code == 200, named.text[:200])
+        elif kind == "rename-changes-text":  # red team, S23 round 8: a title hook that would write another body
+            content.hooks["retitle"] = lambda source, title: f"# {title}\n\nA body nobody approved ({marker}).\n"
+            try:
+                renamed = client.post(f"/api/content/documents/{sid}/rename", json={"title": f"Returns {marker}"},
+                                      headers=HEAD)
+            finally:
+                content.hooks["retitle"] = None
+            run.promise("a rename that would change the text is refused", renamed.status_code == 409, renamed.text[:200])
+            check(kind)
+            continue
+        elif kind == "decide-on-replaced-file":  # red team, S23 round 8: approve the file shown, not the record's text
+            path, original = register.file_path(sid), register.file_path(sid).read_bytes()
+            path.write_bytes(process_text(marker))  # replaced on disk, outside content management
+            try:
+                shown = hashlib.sha256(process_text(marker)).hexdigest()
+                decided = client.post(f"/api/content/documents/{sid}/approve", json={"expected_sha": shown}, headers=HEAD)
+                run.promise("a decision on a file replaced outside is refused", decided.status_code == 409,
+                            decided.text[:200])
+            finally:
+                path.write_bytes(original)
+            check(kind)
+            continue
+        elif kind == "reject-unnamed":  # red team, S23 round 8: a rejection must name its text too
+            unnamed = client.post("/api/ontology/actions/reject_source", json={"params": {"source_id": sid}},
+                                  headers=HEAD).json()
+            run.promise("a rejection naming no text is refused", unnamed.get("outcome") != "ok", str(unnamed)[:200])
+            run.promise("and the document stays approved", register.get(sid).approval_status == "approved", marker)
+            check(kind)
+            continue
         elif kind == "unreadable":
             ok = publish(b"   \n")
             run.promise("an unreadable text is refused", not ok, marker)

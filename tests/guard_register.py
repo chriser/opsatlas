@@ -296,11 +296,22 @@ GUARDS: dict[str, dict] = {
                                    lambda self, source_id, failed, step: step()),
         "tests": ["tests/test_publish_order.py::test_a_step_failing_after_the_commit_never_fails_the_publish"],
     },
+    "a rename changes the title and nothing else (REF S23, S8)": {
+        "off": lambda: _off("assistant.content.service", "_after_heading", lambda text: ""),
+        "tests": ["tests/test_workspace_door.py::test_a_rename_that_would_change_the_text_is_refused"],
+    },
+    "a decision is on the record's own text, not a file changed outside (REF S23, S8)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "record_text",
+                                   lambda self, source: self.published_text(source)),
+        "tests": ["tests/redteam/test_s23_round8_redteam.py::"
+                  "test_s23_round8_an_approval_naming_the_shown_text_approves_the_records_other_text"],
+    },
     "an approval names the text it approves (REF S23, S8)": {
         "off": lambda: _off("assistant.api.routes_governance", "names_current", lambda record, named: True),
         "tests": ["tests/test_workspace_door.py::test_an_approval_names_the_text_it_approves",
                   "tests/test_workspace_door.py::test_an_approval_of_the_version_read_is_refused_once_another_is_written",
-                  "tests/test_workspace_door.py::test_the_approve_action_names_the_text_too"],
+                  "tests/test_workspace_door.py::test_the_approve_action_names_the_text_too",
+                  "tests/redteam/test_s23_round8_redteam.py::test_s23_round8_a_persons_rejection_through_the_actions_route_names_no_text"],
     },
     "passages without a fingerprint are not served while a version is staged (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.ingestion.store").SectionStore, "UNKNOWN_IS_LIVE", True),

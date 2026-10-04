@@ -59,6 +59,11 @@ SITE_NAME = re.compile(f"[{_LATIN} '\u2019-]{{1,60}}")
 _LETTER_OR_DIGIT = re.compile(f"[{_LATIN}]")
 
 
+def _after_heading(text: str) -> str:
+    """A document's text after its first line (its title heading), for telling a rename from an edit."""
+    return text.strip().partition("\n")[2].strip()
+
+
 def plain_site_name(name: str) -> bool:
     """A site name a label can say in full and nothing else (REF H3b, the Human's decision after round 5): up to 60
     Latin letters (with accents), digits 0 to 9, spaces, hyphens and apostrophes, with at least one letter or digit.
@@ -138,6 +143,17 @@ class ContentService:
             raise NotFound("No such source")
         text = content.decode("utf-8", "replace") if self.editable(record) else extract_text(record.filename, content)
         return record, text
+
+    def record_text(self, source) -> str:
+        """The text the record names (by its SHA-256), for a decision on it (REF S23, S8, red team round 8). Where the
+        file was changed outside content management the record's text is not there to decide on: refused, never the
+        file in its place."""
+        try:
+            content = self.register.read_content(source.id, sha=source.content_sha256)
+        except ContentReplaced:
+            raise ContentError("The file was changed outside content management; publish it as a new version, "
+                               "then review it") from None
+        return content.decode("utf-8", "replace") if self.editable(source) else extract_text(source.filename, content)
 
     def published_text(self, source) -> str:
         """The live text (REF S23): the record's own, with a committed version not yet moved into place moved first.
@@ -356,7 +372,7 @@ class ContentService:
         lock, taken at the door, so the version decided on is the one read: no new version can be written in between
         (REF S23, S7, S8)."""
         source = self._source(source_id)
-        if sha(self.published_text(source)) != expected_sha:
+        if sha(self.record_text(source)) != expected_sha:  # the record's own text, the one decided on (S8)
             raise ContentError("The document changed since you opened it; reload it and review it again")
         state = "approved" if approve else "rejected"
         if source.approval_status == state:
@@ -745,6 +761,11 @@ class ContentService:
                             else ((text if text.endswith("\n") else text + "\n").encode(), None))
         approved = source.approval_status == "approved"
         written = content.decode("utf-8", "replace")
+        # A rename changes the title and nothing else (REF S23, S1, S8, red team round 8): a new version whose body is
+        # not the live version's would put a text nobody approved live under the old approval.
+        if _after_heading(written) != _after_heading(self.record_text(source)):
+            raise ContentError("This rename would change the document's text as well as its title; publish the "
+                               "document's current text again, then rename it")
         updated = self._write_version(source, content, approve=approved, extra={"title": title},
                                       history={"label": "renamed", "note": f"Renamed from “{old}” to “{title}”"})
         if self.hooks["published"]:  # after the commit: it never fails the rename (REF S23, S5)
