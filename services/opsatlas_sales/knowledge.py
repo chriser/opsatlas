@@ -43,21 +43,37 @@ class Knowledge:
         # This store's own lock, within one process; only writers take it, after the workspace's door (REF S23, S7).
         self.lock = threading.RLock()
         self.governed_by = None  # the workspace's lock its writes must hold, set by the workspace (REF S23, S7)
+        # Told when a decision finds a record out of step with its document, so the step that failed is tried again.
+        self.on_out_of_step = None
 
-    def _withdraw(self, source_id):
+    def _in_step(self, rows):
+        """Refuse, before anything changes, a decision on a record whose copy (its text's hash, as the person read it)
+        is not its document's stored text (REF S23, S8, the Human's decision after round 10): a step after the
+        document's last publish did not complete. That step is tried again, so the next review sees the document."""
+        for row in rows:
+            if self.register.names_text(row['source_id'], row['sha256']) is not None:
+                if self.on_out_of_step is not None:
+                    try:  # bring it in step for the next review; the refusal stands whatever happens here
+                        self.on_out_of_step(row['source_id'])
+                    except Exception:
+                        pass
+                raise ValueError(f"\u201c{row['title']}\u201d is out of step with its document; refresh and review it again")
+
+    def _withdraw(self, row):
         """Withdraw a record's document through the audited action, so the process registry and the facts map are
-        rebuilt without it (REF S4). Directly on the register when no actions engine is wired or the action fails, so
-        a withdrawal still fails closed."""
-        source = self.register.get(source_id)
+        rebuilt without it (REF S4). It names the text the person decided on, the record's as they read it (REF S23,
+        S8); a refusal refuses the whole decision, and nothing else changes."""
+        source = self.register.get(row['source_id'])
         if source is None or source.approval_status == 'rejected':
             return
         if self.actions:
             from assistant.ontology.actions import acting_person
-            result = self.actions.execute('reject_source', {'source_id': source_id, 'sha': source.content_sha256},
-                                          acting_person('service:workspace-key'))  # the text it withdraws (S8)
-            if result.outcome == 'ok':
-                return
-        self.register.withdraw(source_id)  # fail closed: out of answers, whatever the action said (REF S23, S8)
+            result = self.actions.execute('reject_source', {'source_id': source.id, 'sha': row['sha256']},
+                                          acting_person('service:workspace-key'))
+            if result.outcome != 'ok':
+                raise ValueError(result.message or 'The withdrawal was refused; refresh and review it again')
+            return
+        self.register.decide(source.id, 'rejected', row['sha256'])
 
     def records(self):
         return json.loads(self.path.read_text()) if self.path.exists() else []
@@ -318,7 +334,8 @@ class Knowledge:
                 raise ValueError('The claim changed; refresh before correcting it')
             if old:
                 # Fail closed before any new source registration; interruption leaves old version unavailable.
-                self._withdraw(old['source_id'])
+                self._in_step([old])
+                self._withdraw(old)
             provenance = {k: data[k] for k in ('session_id', 'turn_id', 'contributor', 'topic', 'question',
                                              'raw_text', 'text', 'status', 'issue')}
             provenance['wording_confirmed_at'] = datetime.now(timezone.utc).isoformat()
@@ -363,8 +380,10 @@ class Knowledge:
             if related != {r['id']: r['sha256'] for r in overlaps}:
                 raise ValueError('Related evidence changed; review all current topic records')
             # Disputes/supersessions withdraw native approval as well as answer eligibility.
-            for item in ([row, *overlaps] if decision == 'dispute' else overlaps if decision == 'supersede' else []):
-                self._withdraw(item['source_id'])
+            withdrawn = [row, *overlaps] if decision == 'dispute' else overlaps if decision == 'supersede' else []
+            self._in_step(withdrawn)  # every record decided on is in step, or nothing changes (REF S23, S8)
+            for item in withdrawn:
+                self._withdraw(item)
                 item['approval'] = 'rejected'
                 item['disputed'] = decision == 'dispute'
             row['disputed'] = decision == 'dispute'
@@ -398,12 +417,13 @@ class Knowledge:
             else:
                 kept, withdraw = None, []
             at = datetime.now(timezone.utc).isoformat()
+            self._in_step(withdraw)  # every record withdrawn is in step, or nothing changes (REF S23, S8)
             for row in pair:
                 other = pair[1] if row is pair[0] else pair[0]
                 note = {'decision': decision, 'with': other['id'], 'reason': reason.strip()[:1000], 'at': at,
                         'actor': acting_name(), 'actor_id': acting_id()}
                 if row in withdraw:
-                    self._withdraw(row['source_id'])
+                    self._withdraw(row)
                     row['approval'] = 'rejected'
                     note['withdrawn'] = True
                     if decision == 'dispute':

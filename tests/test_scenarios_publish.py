@@ -20,8 +20,9 @@ reported failed; the event store down;
 two publishes at once; a details edit during a publish; a reader during a publish; a write without the lock; an
 approval of a version superseded since it was read; a rename whose title hook would change the text; a decision on a
 file replaced outside content management, through any path; a rejection naming no text; a return naming an older
-draft. The red teams' findings (REF H3b rounds 5 and 6; REF S23 rounds 1 to 9) are kinds here. A publish here is a
-job: it holds the workspace's lock, as a request does.
+draft; a records step failing after a commit (tried again at the next write). The red teams' findings (REF H3b rounds 5
+and 6; REF S23 rounds 1 to 10) are kinds here. A publish here is a job: it holds the workspace's lock, as a request
+does.
 """
 import hashlib
 import os
@@ -124,7 +125,7 @@ def one_run(run, client, core, sid, live):
                                "crash-after-commit", "restore", "history-lands-then-fails", "events-down",
                                "read-while-writing", "write-without-lock", "approve-superseded",
                                "rename-changes-text", "decide-on-replaced-file", "reject-unnamed",
-                               "return-older-draft"])
+                               "return-older-draft", "records-step-fails"])
         run.step(kind, marker)
         if kind == "publish":
             ok = publish(text)
@@ -277,6 +278,30 @@ def one_run(run, client, core, sid, live):
                 content.discard_draft(sid)
             check(kind)
             continue
+        elif kind == "records-step-fails":  # red team, S23 round 10: the workspace's records step fails after a commit
+            calls = []
+            with writing(core):  # through the workflow: the records step runs after a publish's commit
+                content.save_draft(sid, text.decode())
+                content.submit(sid)
+            draft_sha = content.store.document(sid)["draft_sha"]
+            content.hooks["published"] = lambda *args: (_ for _ in ()).throw(OSError("records: disk full"))
+            try:
+                as_job(core, content.publish, sid, draft_sha)
+                ok = True
+            except Exception:
+                ok = False
+            finally:
+                content.hooks["published"] = lambda record, written, context, approved: calls.append((context, approved))
+            run.promise("a publish whose records step fails is published", ok, marker)
+            run.promise("and its records step is marked to try again", bool(content.store.meta(f"records_pending:{sid}")),
+                        marker)
+            try:
+                as_job(core, content.retry_records, sid)  # what the next write to the document does first
+            finally:
+                content.hooks["published"] = None
+            run.promise("the records step is tried again, recording no one's approval",
+                        calls and calls[-1][1] is False and calls[-1][0].get("previous") is None, str(calls)[:200])
+            run.promise("and is no longer pending", not content.store.meta(f"records_pending:{sid}"), marker)
         elif kind == "reject-unnamed":  # red team, S23 round 8: a rejection must name its text too
             unnamed = client.post("/api/ontology/actions/reject_source", json={"params": {"source_id": sid}},
                                   headers=HEAD).json()

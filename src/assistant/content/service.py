@@ -371,6 +371,7 @@ class ContentService:
         """Approve or reject the published version the Human has just read, without editing it. Under the workspace's
         lock, taken at the door, so the version decided on is the one read: no new version can be written in between
         (REF S23, S7, S8)."""
+        self.retry_records(source_id)  # a records step that failed after the last commit, tried again first (S5)
         source = self._source(source_id)
         # The record's own text, for a clear answer here; the register's decide checks it again and that one counts (S8).
         if sha(self.record_text(source)) != expected_sha:
@@ -529,8 +530,7 @@ class ContentService:
             "label": "approved", "note": note.strip()[:1000] or state.get("submitted_note")})
         n = updated.history_n
         # The version is live (its record names it): nothing after this fails the publish (REF S23, S5, red team round 7).
-        extra = self._after_commit(source_id, "the workspace's records were not updated",
-                                   lambda: self.hooks["published"](updated, written, context, True)
+        extra = self._records_step(source_id, lambda: self.hooks["published"](updated, written, context, True)
                                    if self.hooks["published"] else {}) or {}
         self._record_edited(updated, written)
         self._after_commit(source_id, "the draft was not cleared", lambda: self.store.clear_draft(source_id))
@@ -567,6 +567,7 @@ class ContentService:
         Without approval the new version is not approved, whatever was approved meanwhile.
         """
         source_id = source.id
+        self.retry_records(source_id)  # a records step that failed after the last commit, tried again first (S5)
         try:
             sections = stage_sections(source_id, source.filename, content)
         except NotIngestableError as exc:
@@ -725,6 +726,43 @@ class ContentService:
                 continue
         self._note_lost_event(record.id, "source_approved")
 
+    def _records_step(self, source_id: str, step):
+        """The workspace's records step after a commit (REF S23, S5): it never fails the publish; when it fails it is
+        marked, and tried again at the next write to the document (the Human's decision after round 10)."""
+        done = {"ok": False}
+
+        def marked():
+            out = step()
+            done["ok"] = True
+            return out
+        out = self._after_commit(source_id, "the workspace's records were not updated", marked)
+        if not done["ok"]:
+            try:
+                self.store.set_meta(f"records_pending:{source_id}", now())
+            except Exception:
+                pass
+        return out
+
+    def retry_records(self, source_id: str) -> bool:
+        """Try again the workspace's records step that failed after a commit: the record's copy is brought in step with
+        the document's stored text. Its approval is not recorded as anyone's: a person confirms it again (REF S23, S8).
+        True when nothing is pending afterwards."""
+        key = f"records_pending:{source_id}"
+        if not self.store.meta(key) or not self.hooks["published"]:
+            return True
+        source = self.register.get(source_id)
+        if source is not None:
+            try:
+                text = self.record_text(source)
+                context = self.hooks["prepare"](source, text)[1] if self.hooks["prepare"] else None
+                self.hooks["published"](source, text, {**(context or {}), "previous": None}, False)
+            except Exception:
+                return False
+            self.store.log(source_id, "OpsAtlas", "records brought in step",
+                           "The workspace's records were updated after a step that failed; confirm the record again")
+        self.store.set_meta(key, "")
+        return True
+
     def _after_commit(self, source_id: str, failed: str, step):
         """A step after a version is committed (its record names it). It never fails the publish (REF S23, S5): a
         failure is recorded in the document's activity instead, so it is not lost unseen."""
@@ -774,7 +812,7 @@ class ContentService:
         updated = self._write_version(source, content, approve=approved, extra={"title": title},
                                       history={"label": "renamed", "note": f"Renamed from “{old}” to “{title}”"})
         if self.hooks["published"]:  # after the commit: it never fails the rename (REF S23, S5)
-            self._after_commit(source_id, "the workspace's records were not updated",
+            self._records_step(source_id,
                                lambda: self.hooks["published"](self.register.get(source_id), written, context, approved))
         self._after_commit(source_id, "the rename was not logged", lambda: self.store.log(
             source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”; version {updated.version}"))

@@ -178,7 +178,8 @@ class SourceRegister:
     #
     # A document's approval changes in two ways only: ``decide``, which names the text decided on and checks that it is
     # the record's and is what is stored; and a commit, the write of a new version's record, which sets the approval in
-    # the same write that names its new text. Every other write that would change it is refused.
+    # the same write that names its new text. Every other write that would change it is refused; there is no exception
+    # (the Human's decision after round 10).
 
     def names_text(self, source_id: str, sha: str | None) -> str | None:
         """Why a decision naming ``sha`` cannot be taken on this source, or None: the record must name that text, and
@@ -204,12 +205,6 @@ class SourceRegister:
         if reason is not None:
             raise TextNotNamed(reason)
         return self._update(source_id, approval_status=status)
-
-    @writes
-    def withdraw(self, source_id: str) -> SourceRecord | None:
-        """The workspace's own withdrawal, when its named rejection could not be taken: fail closed, out of answers. Not
-        reachable by a person (no route or action calls it)."""
-        return self._update(source_id, approval_status="rejected")
 
     @writes
     def update(self, source_id: str, **fields) -> SourceRecord | None:

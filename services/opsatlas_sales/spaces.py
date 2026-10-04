@@ -252,9 +252,6 @@ class FamilyRegister:
     def decide(self, source_id, status, sha):
         return self._for(source_id).decide(source_id, status, sha)
 
-    def withdraw(self, source_id):
-        return self._for(source_id).withdraw(source_id)
-
     def add(self, record, content):
         return self.registers[self.home].add(record, content)
 

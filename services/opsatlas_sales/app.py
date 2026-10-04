@@ -146,6 +146,8 @@ def _build(root):
     desk = GovernanceDesk(register, sections, app.state.retrieval, actions, knowledge)
     desk.governed_by = workspace_lock
     app.state.governance_desk = desk
+    # A Sales decision that finds a record out of step with its document has the step that failed tried again (REF S23).
+    knowledge.on_out_of_step = lambda source_id: cores[register.space_of(source_id)].state.content.retry_records(source_id)
     # Content management keeps records consistent when their documents are edited (CM S12), in every family space.
     from .content import attach as attach_content
     for space in FAMILY:

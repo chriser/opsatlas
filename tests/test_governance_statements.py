@@ -155,9 +155,11 @@ def test_the_store_re_extracts_only_changed_sources(tmp_path):
     statements, sync = store.sync(register, sections)
     assert len(sync['extracted']) == 3 and statements
     assert store.sync(register, sections)[1]['extracted'] == []
-    register.update(ids['Pricing pack'], content_sha256='changed', version=2)
+    changed = register.read_content(ids['Pricing pack']) + b"\nA changed line.\n"  # a new text, its record naming it
+    register.write_content(ids['Pricing pack'], changed)
+    register.update(ids['Pricing pack'], content_sha256=hashlib.sha256(changed).hexdigest(), version=2)
     assert store.sync(register, sections)[1]['extracted'] == [ids['Pricing pack']]
-    register.withdraw(ids['Pricing pack'])  # out of answers (its record names a text not stored: no decision can)
+    decided(register, ids['Pricing pack'], approval_status='rejected')
     assert store.sync(register, sections)[1]['removed'] == [ids['Pricing pack']]
 
 

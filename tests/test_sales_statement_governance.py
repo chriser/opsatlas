@@ -86,7 +86,8 @@ def sales(tmp_path):
         # Seeded records are approved; a contributed claim waits for the Human.
         decided(register, source.id, approval_status='pending' if contributor else 'approved')
         rows.append({'id': identifier, 'title': title, 'text': text, 'status': status, 'topics': [identifier], 'source_id': source.id,
-                     'sha256': 'x', 'references': [{'path': 'paper:03-2.md', 'source_id': paper.id, 'sha256': 'y'}]
+                     'sha256': source.content_sha256,  # the record's copy in step with its document (REF S23, S8)
+                     'references': [{'path': 'paper:03-2.md', 'source_id': paper.id, 'sha256': 'y'}]
                      if identifier == 'governance' else [], 'versions': [],
                      **({'provenance': {'contributor': contributor, 'topic': 'security'}} if contributor else {})})
     conversation = register_upload(register, 'style.md', b'# Tibi style\n\nTibi does not support crude jokes or single sign-on talk.\n',
@@ -94,7 +95,7 @@ def sales(tmp_path):
     ingest_source(register, sections, conversation.id)
     decided(register, conversation.id, approval_status='approved')
     rows.append({'id': 'style', 'title': 'Tibi style', 'text': 'x', 'status': 'available', 'kind': 'conversation', 'topics': [],
-                 'source_id': conversation.id, 'sha256': 'x', 'references': [], 'versions': []})
+                 'source_id': conversation.id, 'sha256': conversation.content_sha256, 'references': [], 'versions': []})
     (register.base_dir / 'sales-records.json').write_text(json.dumps(rows))
     knowledge = Knowledge(register)
     holder = {}
@@ -333,7 +334,7 @@ def test_the_proof_of_concept_and_a_real_deployment_are_never_judged_against_eac
     ingest_source(register, desk.sections, source.id)
     decided(register, source.id, approval_status='approved')
     rows.append({'id': 'real-deployment', 'title': 'Real deployment', 'text': text, 'status': 'planned', 'topics': [],
-                 'source_id': source.id, 'sha256': 'x', 'references': [], 'versions': []})
+                 'source_id': source.id, 'sha256': source.content_sha256, 'references': [], 'versions': []})
     # A claim filed under the real-deployment topic that speaks about the proof of concept is scoped by its own words.
     claim = next(r for r in rows if r['id'] == 'sso-claim')
     claim['provenance']['topic'] = 'real-deployment'
@@ -370,3 +371,19 @@ def test_a_withdrawal_goes_through_the_audited_action_so_the_facts_map_is_rebuil
     claim = next(r for r in knowledge.records() if r['id'] == 'sso-claim')
     assert ('reject_source', claim['source_id'], 'operator') in knowledge.actions.calls
     assert register.get(claim['source_id']).approval_status == 'rejected'
+
+
+def test_a_decision_on_several_records_changes_nothing_when_one_is_out_of_step(sales):
+    """A dispute withdraws the claim and the records it overlaps; when one of them is out of step with its document (a
+    step after its publish failed), the whole decision is refused before anything changes (REF S23, S8)."""
+    desk, register, knowledge, _, _ = sales
+    rows = {r['id']: r for r in knowledge.records()}
+    claim, security = rows['sso-claim'], rows['security']
+    before = {r: register.get(rows[r]['source_id']).approval_status for r in ('sso-claim', 'security')}
+    changed = register.read_content(security['source_id']) + b'\nA line its record has not seen.\n'
+    register.write_content(security['source_id'], changed)  # the document moves on; the record's copy does not
+    register.update(security['source_id'], content_sha256=hashlib.sha256(changed).hexdigest())
+    with pytest.raises(ValueError, match='out of step'):
+        knowledge.adjudicate('sso-claim', claim['sha256'], 'dispute', {'security': security['sha256']},
+                             'A later account contradicts this claim')
+    assert {r: register.get(rows[r]['source_id']).approval_status for r in ('sso-claim', 'security')} == before

@@ -322,6 +322,16 @@ GUARDS: dict[str, dict] = {
                   "tests/redteam/test_s23_round9_replaced_file.py::test_s23_round9_governance_route_approves_replaced_file",
                   "tests/redteam/test_s23_round9_replaced_file.py::test_s23_round9_actions_route_approves_replaced_file"],
     },
+    "a Sales decision changes nothing while a record is out of step (REF S23, S8)": {
+        "off": lambda: _method_off("services.opsatlas_sales.knowledge", "Knowledge", "_in_step", lambda self, rows: None),
+        "tests": ["tests/test_sales_statement_governance.py::"
+                  "test_a_decision_on_several_records_changes_nothing_when_one_is_out_of_step"],
+    },
+    "a failed records step is tried again (REF S23, S5)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "retry_records",
+                                   lambda self, source_id: True),
+        "tests": ["tests/test_sales_records_in_step.py::test_a_failed_records_step_is_tried_again_and_a_dispute_waits_for_it"],
+    },
     "an approval changes only through decide or a commit (REF S23, S8)": {
         "off": lambda: _method_off("assistant.sources.register", "SourceRegister", "update",
                                    lambda self, source_id, **fields: self._update(source_id, **fields)),
