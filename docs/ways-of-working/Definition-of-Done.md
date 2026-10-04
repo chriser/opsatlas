@@ -22,7 +22,7 @@ This is the system of record for what each work-item **state** means and the bar
    merged into `main` (small, focused, `#id`-scoped commits; conventional message + Co-Authored-By). `main` is the
    integration and release line: going live means the live folder at `main`, tagged `live-YYYY-MM-DD[x]` (the Human's
    decision of 4 October 2026).
-2. **Green gate**: `pytest` and `ruff check .` pass; module-boundary checks (e.g. import-linter contract, if configured) intact; `npm run build` passes **if** a frontend surface was touched.
+2. **Green gate**: `pytest` and `ruff check .` pass, the [module-boundary checks](Boundaries.md) among them (imports, store ownership, no private reach-ins; their allow-lists only shrink); `npm run build` passes **if** a frontend surface was touched.
 3. **Tests** added/updated covering the change (offline/deterministic where possible).
 4. **ADO updated**: status set, and a comment recording the **commit hash** + what was delivered. When the work affects another agent, add a handover entry in the **[Agent Handover Log](Agent-Handover-Log.md)** Wiki page (not in the ticket).
 5. **Boundaries & data safety**: module boundaries intact; no secrets in code; **all data remains synthetic / anonymised only** — no real or confidential source material, no real system or organisation names, no personal data, nothing commercially sensitive enters the repo, indexes, logs or tooling.

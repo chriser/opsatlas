@@ -23,9 +23,8 @@ from pathlib import Path
 import pytest
 
 from assistant.storage import NotHolding, WriteDoor, holds, locked
-from tests.door_helpers import as_job, decide, decided, writing
-from tests.iam_helpers import sign_in
-from tests.test_space_leaks import hermetic, refuse
+from tests.door_helpers import as_job, decide, writing
+from tests.test_space_leaks import refuse
 
 REPO = Path(__file__).resolve().parents[1]
 ACME = {"X-OpsAtlas-Space": "acme"}
@@ -33,35 +32,14 @@ TEXT = b"# Pricing\n\nAlpha is the first plan.\n"
 
 
 @pytest.fixture
-def sales(tmp_path, monkeypatch):
-    from fastapi.testclient import TestClient
-
-    from services.opsatlas_sales.app import create_sales_app
-    monkeypatch.setattr(os, "environ", os.environ.copy())
-    monkeypatch.setattr(socket, "create_connection", refuse)
-    monkeypatch.setattr(socket.socket, "connect", refuse)
-    os.environ["SME_TIBI_VOICE_URL"] = "http://127.0.0.1:9"
-    os.environ["SALES_GOVERNANCE_AUTO_REVIEW"] = "0"
-    root = tmp_path / "sales"
-    app = create_sales_app(root)
-    hermetic(app)
-    with TestClient(app) as client:
-        client.headers.update({"Authorization": f"Bearer {sign_in(client, app)}"})
-        assert client.post("/api/spaces", json={"name": "Acme"}).status_code == 200
-        hermetic(app.state.cores["acme"])
-        yield app, client, root
+def sales(sales_workspace):
+    """The shared builder's workspace (REF S59): set-up goes through the routes, never by writing stores."""
+    return sales_workspace
 
 
-def _document(app, approval="approved", text=TEXT):
-    from assistant.ingestion.service import ingest_source
-    from assistant.sources.service import register_upload
-    core = app.state.cores["acme"]
-    register, sections = core.state.register, core.state.section_store
-    with writing(core):  # set-up is a job: it holds the workspace's lock, as a request does
-        record = register_upload(register, "pricing.md", text, "Pricing")
-        ingest_source(register, sections, record.id)
-        decided(register, record.id, approval_status=approval)
-    return core, record.id
+def _document(workspace, approval="approved", text=TEXT):
+    """A document uploaded, ingested and (unless pending) approved through the routes, as a person would."""
+    return workspace.core, workspace.document(text, title="Pricing", approve=approval == "approved")
 
 
 def _hold(root):
@@ -182,7 +160,7 @@ def test_a_request_that_may_change_something_holds_the_lock_and_a_read_does_not(
 
 def test_a_space_request_writes_through_the_door_and_a_direct_write_is_refused(sales):
     app, client, root = sales
-    core, source_id = _document(app)
+    core, source_id = _document(sales)
     draft = "# Pricing\n\nBeta is the first plan.\n"
     with pytest.raises(NotHolding):
         core.state.content.save_draft(source_id, draft)
@@ -193,7 +171,7 @@ def test_a_space_request_writes_through_the_door_and_a_direct_write_is_refused(s
 
 def test_a_reader_never_waits_while_a_writer_holds_the_lock(sales):
     app, client, root = sales
-    core, source_id = _document(app, approval="pending")
+    core, source_id = _document(sales, approval="pending")
     client.get("/api/content/documents")  # warm the governance scan, so only the lock could make a read slow
     release, holder = _hold(root)
     try:
@@ -209,7 +187,7 @@ def test_a_reader_never_waits_while_a_writer_holds_the_lock(sales):
 
 def test_writes_take_turns(sales):
     app, client, root = sales
-    core, source_id = _document(app)
+    core, source_id = _document(sales)
     draft = "# Pricing\n\nGamma is the first plan.\n"
     release, holder = _hold(root)
     try:
@@ -243,7 +221,7 @@ def test_the_workspace_builds_under_its_lock(tmp_path, monkeypatch):
 
 def test_an_approval_names_the_text_it_approves(sales):
     app, client, root = sales
-    core, source_id = _document(app, approval="pending")
+    core, source_id = _document(sales, approval="pending")
     register = core.state.register
     sha = register.get(source_id).content_sha256
     assert client.post(f"/api/governance/sources/{source_id}/approve", headers=ACME).status_code == 422
@@ -259,7 +237,7 @@ def test_an_approval_names_the_text_it_approves(sales):
 
 def test_an_approval_of_the_version_read_is_refused_once_another_is_written(sales):
     app, client, root = sales
-    core, source_id = _document(app, approval="pending")
+    core, source_id = _document(sales, approval="pending")
     register, content = core.state.register, core.state.content
     read = register.get(source_id).content_sha256  # the reviewer reads this version
     as_job(core, content._write_version, register.get(source_id), b"# Pricing\n\nDelta is the first plan.\n",
@@ -272,7 +250,7 @@ def test_an_approval_of_the_version_read_is_refused_once_another_is_written(sale
 
 def test_the_approve_action_names_the_text_too(sales):
     app, client, root = sales
-    core, source_id = _document(app, approval="pending")
+    core, source_id = _document(sales, approval="pending")
     register = core.state.register
     url = "/api/ontology/actions/approve_source"
     unnamed = client.post(url, json={"params": {"source_id": source_id}}, headers=ACME).json()
@@ -290,7 +268,7 @@ def test_a_rename_that_would_change_the_text_is_refused(sales):
     """A rename changes the title and nothing else (S1, S8, red team round 8): where the workspace's title hook would
     write a different body (a stale copy of the record), the rename is refused and the live approved text stands."""
     app, client, root = sales
-    core, source_id = _document(app)
+    core, source_id = _document(sales)
     register, content = core.state.register, core.state.content
     before = register.read_content(source_id)
     content.hooks["retitle"] = lambda source, title: f"# {title}\n\nAn older body nobody approved.\n"
@@ -307,7 +285,7 @@ def test_an_approval_cannot_be_written_around_decide(sales):
     text (S8, the Human's decision after round 9): a plain update of the approval is refused, even under the lock."""
     from assistant.sources.register import ApprovalOutsideDecide
     app, client, root = sales
-    core, source_id = _document(app, approval="pending")
+    core, source_id = _document(sales, approval="pending")
     register = core.state.register
     with writing(core):
         with pytest.raises(ApprovalOutsideDecide):
@@ -322,7 +300,7 @@ def test_a_return_names_the_draft_returned(sales):
     """A return to the author names the draft the reviewer read (S8): once the author resubmits a newer draft, a
     return naming the older one is refused, and one naming the newer is applied."""
     app, client, root = sales
-    core, source_id = _document(app)
+    core, source_id = _document(sales)
     content = core.state.content
     url = f"/api/content/documents/{source_id}"
     with writing(core):
@@ -344,7 +322,7 @@ def test_a_decision_stands_when_a_step_after_it_fails(sales):
     """An action's handler is its decision; its side effects are the steps after it (S5, S8, red team round 11). When
     one fails, the approval stands, the caller is told it took effect, and the step is noted in the action log."""
     app, client, root = sales
-    core, source_id = _document(app, approval="pending")
+    core, source_id = _document(sales, approval="pending")
     engine = core.state.actions
     real = engine._side_effects["record_analytics_event"]
     engine._side_effects["record_analytics_event"] = lambda context, result: (_ for _ in ()).throw(OSError("events down"))

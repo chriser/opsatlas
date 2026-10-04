@@ -492,12 +492,12 @@ class Knowledge:
                 semantic, mode = [_cosine(query_vector, v) for v in vectors], 'hybrid'
             except Exception:
                 semantic = None
-        threshold = retrieval._relevant if retrieval is not None else (lambda lex, sem: lex > 0)
+        threshold = retrieval._relevant if retrieval is not None else (lambda lex, sem: lex > 0)  # noqa: SLF001
         results = [
             {'id': rows[i]['id'], 'score': round(float(score), 4), 'lexical': round(float(lexical[i]), 4),
              'similarity': None if semantic is None else round(float(semantic[i]), 4),
              'relevant': bool(threshold(lexical[i], None if semantic is None else semantic[i]))}
-            for i, score in RetrievalService._fuse(lexical, semantic)]
+            for i, score in RetrievalService._fuse(lexical, semantic)]  # noqa: SLF001
         # The platform search drops irrelevant passages; here they are kept for routing but ranked last.
         results.sort(key=lambda r: not r['relevant'])
         return {'mode': mode, 'results': results}

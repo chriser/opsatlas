@@ -136,7 +136,7 @@ def attach(content, knowledge, desk, library=True) -> None:
                 citing.append({"id": row["id"], "title": row["title"], "reconfirm": not reformatted})
                 history.append({"id": row["id"], "decision": "evidence updated", "evidence": source.id, "at": at,
                                 "reformatted": reformatted})
-            knowledge._save(rows)
+            knowledge._save(rows)  # noqa: SLF001
             with (knowledge.register.base_dir / "sales-review-history.jsonl").open("a") as log:
                 for entry in history:
                     log.write(json.dumps(entry) + "\n")
@@ -254,7 +254,7 @@ def attach(content, knowledge, desk, library=True) -> None:
         rows = knowledge.records()
         row = record_of(source.id, rows)
         if row is None:
-            content._approve(source.id, source.content_sha256) if approve else content._reject(source.id, source.content_sha256)
+            content._approve(source.id, source.content_sha256) if approve else content._reject(source.id, source.content_sha256)  # noqa: SLF001
             return
         try:
             knowledge.decide(row["id"], row["sha256"], approve)  # the record's own review: enabled or excluded

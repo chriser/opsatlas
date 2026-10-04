@@ -62,10 +62,10 @@ def recover(args: argparse.Namespace) -> int:
         return 2
     store = iam.store
     with store.transaction():
-        token = iam._issue(
+        token = iam._issue(  # noqa: SLF001
             "reset", user, issuer=None, minutes=iam.setting("reset.minutes"), payload={"recovery": True, "reason": args.reason}
         )
-        iam._revoke_sessions(user["id"], "emergency recovery")
+        iam._revoke_sessions(user["id"], "emergency recovery")  # noqa: SLF001
         store.insert(
             "recovery_events",
             {

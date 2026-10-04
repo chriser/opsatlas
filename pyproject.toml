@@ -9,4 +9,12 @@ target-version = "py311"
 extend-exclude = ["automation/azure_devops"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+# SLF001: no reaching into another module's private members (REF S59, docs/ways-of-working/Boundaries.md). Today's sites
+# are marked line by line with "noqa: SLF001"; a new one fails the gate.
+select = ["E", "F", "I", "W", "SLF001"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests may look inside what they test; Tibi's engine is its own component (its files are under its fingerprint and gate).
+"tests/**" = ["SLF001"]
+"evaluation/**" = ["SLF001"]
+"services/sme_interviewer/**" = ["SLF001"]

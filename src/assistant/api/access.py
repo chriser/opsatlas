@@ -159,7 +159,7 @@ def still_allowed(request: Request, permission: str) -> None:
         raise AccessError(401, "AUTH_REQUIRED", "Sign in to continue")
     iam = request.app.state.auth.iam
     session = iam.store.one("SELECT * FROM sessions WHERE id = ?", (actor.session["id"],))
-    if session is None or session["revoked_at"] or iam._check_session(session, touch=False) is None:
+    if session is None or session["revoked_at"] or iam._check_session(session, touch=False) is None:  # noqa: SLF001
         raise AccessError(401, "AUTH_REQUIRED", "Your session ended while the answer was prepared; sign in again")
     decision = iam.decide(iam.context(actor.user, session, actor.request_id), permission,
                           _space_for(request, permission, "auto"))

@@ -324,6 +324,15 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _off("assistant.content.service", "_after_heading", lambda text: ""),
         "tests": ["tests/test_workspace_door.py::test_a_rename_that_would_change_the_text_is_refused"],
     },
+    "imports keep to the module boundaries (REF S59)": {
+        "off": lambda: _off("boundary_rules", "import_violations", lambda edges, rule, allowed=None: []),
+        "tests": ["tests/test_boundaries.py::test_a_core_module_importing_the_sales_layer_is_caught",
+                  "tests/test_boundaries.py::test_a_new_package_cycle_is_caught"],
+    },
+    "each store is named only by its owner (REF S59)": {
+        "off": lambda: _off("boundary_rules", "store_violations", lambda mentions, owners=None, also=None: []),
+        "tests": ["tests/test_boundaries.py::test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance"],
+    },
     "an approval names the text it approves (REF S23, S8)": {
         "off": lambda: _method_off("assistant.sources.register", "SourceRegister", "names_text",
                                    lambda self, source_id, sha: None),

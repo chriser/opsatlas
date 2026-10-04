@@ -19,3 +19,18 @@ if os.environ.get('OPSATLAS_DISABLE_GUARD'):
     from guard_register import switch_off
 
     switch_off(os.environ['OPSATLAS_DISABLE_GUARD'])
+
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture
+def sales_workspace(tmp_path, monkeypatch):
+    """A hermetic Sales app, signed in, with one organisation space; set state up with its builders (tests/builders.py)."""
+    import sys
+
+    sys.path.insert(0, os.path.dirname(__file__))
+    from builders import sales_workspace as build
+
+    with build(tmp_path, monkeypatch) as workspace:
+        yield workspace
