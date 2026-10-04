@@ -7,7 +7,49 @@ approval, and everything else reads and commands through it. Behaviour does not 
 S57 put in place gain one owner: the door, decide in the store, drafts naming the draft, and the staged publish. An
 agent changing how documents behave then needs only this component and its contract in view.
 
-**Status:** design v2, before the second design red-team round. Nothing is built.
+**Status: the stop rule applies.** Nothing is built. The decision is with the Human; see the next section. v2 below is
+kept as the record.
+
+## The stop rule (4 October 2026, after design round 2)
+
+Round 2 on v2 found 2 Highs, 8 Mediums and 1 Low, every one in an area where round 1 also found a fault. Its report is
+`research_notes/design-red-team-2026-10-04-S60-round2.md` (local), with probes in
+`research_notes/design-red-team-S60-probes/`. Under rule 7, patching stops here.
+
+**The design flaw.** v2 asked a refactor that changes no behaviour to carry three new mechanisms. Each collides with an
+exception S57 made on purpose:
+
+1. **A runtime "one way in"** over stores whose readers write by design:
+   - readers settle a committed version;
+   - views record under `if_free`;
+   - background reviews read, and so settle.
+
+   Set around commands only, the context refuses all of these. After a crash, every reader fails.
+2. **A transfer that heals itself,** working over the two live copies a failed write leaves behind and keyed on the
+   text alone:
+   - the copies' approvals can differ;
+   - the callers take the first space holding the document as the origin, so a retry can miss the half-done case.
+3. **Moving the decision code ahead of the staged publish it is bound to:**
+   - the publish handler belongs with the content workflow's staged-publish code;
+   - the document rules are shared with `accept_issue` and `save_document`.
+
+**The simpler design, for the Human's decision.**
+
+- **Keep.** Round 2 found these sound, or sound with small corrections:
+  - **One owner by construction.** Only the component imports the stores, proven by S59's import rule. A leaf takes the
+    register's errors and the content workflow's two second-cycle helpers (the date reader and the phase names).
+  - **The reads:** the permissive and strict reads named apart, with `names_text`.
+  - **The decisions:** `review` and `decide` as two commands, `decide` taking the actor as today's callers pass it.
+  - **The rest:** a corrected error table, the folder rule, one builder for the app and the suite, and
+    `documents.govern`.
+- **Drop from S60:**
+  - **The runtime command context (D4).** The import rule and an AST check over production code are the check. Runtime
+    enforcement would be designed on its own later, if wanted, with the readers' settles in scope.
+  - **The self-healing transfer.** Bug #2186 is fixed narrowly, and first. A document that two spaces hold is never
+    moved automatically and never blocks start-up. It is reported in its activity and in the start-up log, and a
+    transfer of it is refused with a clear message until a person resolves it.
+  - **Moving the publish handler.** Only the approve and reject handlers move, with their own rules. Shared rules stay
+    where they are registered.
 
 - **v1 (`d6e2034`)** went to the design red team: 4 Highs, 11 Mediums, 3 Lows. Its report is
   `research_notes/design-red-team-2026-10-04-S60.md`, with probes in `research_notes/design-red-team-S60-probes/`,
