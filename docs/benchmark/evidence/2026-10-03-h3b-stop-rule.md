@@ -152,3 +152,10 @@ Scope's own rules (dates, labels, site names, the facts gate) found no break in 
 
 **Stated limit of P2:** the character rule cannot stop allowed words forming a site name, for example "In force until 1
 January 2030". Site names are governed text written by editors, like the documents themselves.
+
+## After S23 (4 October 2026)
+
+REF S23 #2140 is built: the staged publish, the workspace's door and approvals decided in the register. Its red-team
+loop ended at round 12 under the Human's exit rule (no break above low). Round 6's tests above pass under S23,
+restated for the door (each says so). H3b goes to Codex with S23 and F10 in one review:
+`2026-10-04-codex-review-brief.md`.
