@@ -7,8 +7,12 @@ approval, and everything else reads and commands through it. Behaviour does not 
 S57 put in place gain one owner: the door, decide in the store, drafts naming the draft, and the staged publish. An
 agent changing how documents behave then needs only this component and its contract in view.
 
-**Status: the stop rule applies.** Nothing is built. The decision is with the Human; see the next section. v2 below is
-kept as the record.
+**Status: the stop rule applied, and the Human chose the simpler design (4 October 2026).**
+
+- Nothing is built.
+- Design v3 follows, written from the simpler design below, and a design round runs on it.
+- Bug #2186 is fixed first, narrowly. That was the Human's choice too.
+- v2 below is kept as the record.
 
 ## The stop rule (4 October 2026, after design round 2)
 
