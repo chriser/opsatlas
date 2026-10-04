@@ -74,6 +74,38 @@ def _reader_moves_unchecked():
     register.promote_if_committed = promote
 
 
+def _readers_wait():
+    """Readers that wait for the workspace's lock instead of only trying it (as the content list did in round 7)."""
+    from contextlib import contextmanager
+    storage = importlib.import_module("assistant.storage")
+
+    @contextmanager
+    def waits(path):
+        if path is None:
+            yield True
+            return
+        with storage.locked(path):
+            yield True
+    for module in ("assistant.content.service", "assistant.sources.register", "assistant.ingestion.store"):
+        setattr(importlib.import_module(module), "if_free", waits)
+
+
+def _stores_unchecked():
+    """Governed stores that write whoever asks, lock or not (as before the door)."""
+    _off("assistant.storage", "require", lambda *args, **kwargs: None)
+    _off("assistant.content.store", "holds", lambda path: True)
+
+
+def _a_lock_per_space():
+    """Each space's door and stores on its own lock, not the workspace's one lock."""
+    def govern(core, lock):
+        own = core.state.register.index_file
+        core.state.write_lock = own
+        for store in (core.state.register, core.state.section_store, core.state.content.store):
+            store.governed_by = own
+    _off("services.opsatlas_sales.app", "govern", govern)
+
+
 def _every_entry_committed():
     """Version entries written as committed from the start (as before S6 was refined)."""
     store = importlib.import_module("assistant.content.store").ContentStore
@@ -240,13 +272,35 @@ GUARDS: dict[str, dict] = {
                   "test_s23_round3_versions_view_sees_uncommitted_version_and_its_number_is_reused",
                   "tests/redteam/test_s23_round3_redteam.py::test_s23_round3_history_entry_lands_but_reports_failure"],
     },
-    "one writer per space: approvals and first versions take the space lock (REF S23, S7)": {
-        "off": lambda: _method_off("assistant.content.service", "ContentService", "_space_lock",
-                                   lambda self: __import__("contextlib").nullcontext()),
-        "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_reader_first_version_overwrites_committed_record",
-                  "tests/redteam/test_s23_round3_redteam.py::"
-                  "test_s23_round3_approval_of_read_version_lands_on_newer_unapproved_version",
-                  "tests/redteam/test_s23_round4_redteam.py::test_s23_round4_rename_reapproves_a_document_rejected_meanwhile"],
+    "a request that may change something takes the workspace's lock at the door (REF S23, S7)": {
+        "off": lambda: _method_off("assistant.storage", "WriteDoor", "opens_for", lambda self, scope: None),
+        "tests": ["tests/test_workspace_door.py::test_writes_take_turns",
+                  "tests/test_workspace_door.py::test_a_request_that_may_change_something_holds_the_lock_and_a_read_does_not",
+                  "tests/test_workspace_door.py::test_a_space_request_writes_through_the_door_and_a_direct_write_is_refused"],
+    },
+    "a governed store refuses a write without the workspace's lock (REF S23, S7)": {
+        "off": lambda: _stores_unchecked(),
+        "tests": ["tests/test_workspace_door.py::test_every_governed_write_refuses_without_the_lock"],
+    },
+    "a reader never waits for the workspace's lock (REF S23, S7)": {
+        "off": lambda: _readers_wait(),
+        "tests": ["tests/test_workspace_door.py::test_a_reader_never_waits_while_a_writer_holds_the_lock",
+                  "tests/redteam/test_s23_round7_redteam.py::test_s23_round7_reading_the_content_list_waits_for_the_workspace_lock"],
+    },
+    "start-up holds the workspace's lock (REF S23, S7)": {
+        "off": lambda: _off("services.opsatlas_sales.app", "locked", lambda path: __import__("contextlib").nullcontext()),
+        "tests": ["tests/test_workspace_door.py::test_the_workspace_builds_under_its_lock"],
+    },
+    "a step after the commit never fails a publish (REF S23, S5)": {
+        "off": lambda: _method_off("assistant.content.service", "ContentService", "_after_commit",
+                                   lambda self, source_id, failed, step: step()),
+        "tests": ["tests/test_publish_order.py::test_a_step_failing_after_the_commit_never_fails_the_publish"],
+    },
+    "an approval names the text it approves (REF S23, S8)": {
+        "off": lambda: _off("assistant.api.routes_governance", "names_current", lambda record, named: True),
+        "tests": ["tests/test_workspace_door.py::test_an_approval_names_the_text_it_approves",
+                  "tests/test_workspace_door.py::test_an_approval_of_the_version_read_is_refused_once_another_is_written",
+                  "tests/test_workspace_door.py::test_the_approve_action_names_the_text_too"],
     },
     "passages without a fingerprint are not served while a version is staged (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.ingestion.store").SectionStore, "UNKNOWN_IS_LIVE", True),
@@ -273,10 +327,8 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/redteam/test_s23_round3_redteam.py::test_s23_round3_stamp_looks_up_current_version_for_unnumbered_record"],
     },
     "one lock per workspace (REF S23, S7)": {
-        "off": lambda: setattr(importlib.import_module("assistant.storage"), "SharedLock",
-                               lambda path: __import__("threading").Lock()),
-        "tests": ["tests/redteam/test_s23_round5_redteam.py::test_s23_round5_sales_review_and_dispute_settle_deadlock",
-                  "tests/redteam/test_s23_round6_redteam.py::test_s23_round6_accept_suggestion_against_publish_deadlocks_the_workspace"],
+        "off": lambda: _a_lock_per_space(),
+        "tests": ["tests/test_workspace_door.py::test_writes_take_turns"],
     },
     "views read a record and its text together (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.sources.register").SourceRegister, "read_record_text",
@@ -292,18 +344,11 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _no_staged_reads(),
         "tests": ["tests/redteam/test_s23_round6_redteam.py::test_s23_round6_record_reader_during_commit_gets_the_previous_versions_text"],
     },
-    "ingestion waits for a publish (REF S23)": {
-        "off": lambda: _off("assistant.ingestion.service", "locked", lambda path: __import__("contextlib").nullcontext()),
-        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_ingest_during_publish_strands_new_version"],
-    },
     "a version written without approval is not approved (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.content.service").ContentService, "_status_without_approval",
                                staticmethod(lambda source: None)),
-        "tests": ["tests/redteam/test_s23_round1_redteam.py::test_s23_round1_unapproved_version_inherits_concurrent_approval"],
-    },
-    "the details editor applies one edit at a time (REF H3b)": {
-        "off": lambda: _off("assistant.content.service", "locked", lambda path: __import__("contextlib").nullcontext()),
-        "tests": ["tests/redteam/test_scope_h3b_round4_redteam.py::test_two_concurrent_edits_store_a_record_that_ends_before_it_starts"],
+        "tests": ["tests/test_publish_order.py::test_a_version_written_without_approval_keeps_the_status_its_writer_saw",
+                  "tests/redteam/test_s23_round1_redteam.py::test_s23_round1_unapproved_version_inherits_concurrent_approval"],
     },
     "plain site names only (REF H3b)": {
         "off": lambda: _off("assistant.content.service", "plain_site_name", lambda name: bool(name.strip())),

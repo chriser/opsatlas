@@ -12,12 +12,14 @@ import os
 import socket
 import sqlite3
 import threading
+import time
 
 import pytest
 from iam_helpers import sign_in
 from test_space_leaks import hermetic, refuse
 
 from assistant.content.service import ContentError
+from tests.door_helpers import as_job, decide
 
 # A failed publish restored the same version and fingerprint (A, B, A), so the version checks could not see B. The
 # Human chose a staged publish (REF S23 #2140): every reader takes only the text and passages of the record it holds,
@@ -66,17 +68,38 @@ def acme(tmp_path, monkeypatch):
             assert up.status_code == 200, up.text
             sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
             assert client.post(f"/api/sources/{sid}/ingest", headers=head).status_code == 200
-            assert client.post(f"/api/governance/sources/{sid}/approve", headers=head).status_code == 200
+            assert decide(client, sid, headers=head).status_code == 200
             ids[name] = sid
         capture = Capture()
         core.state.answer.generator = capture
         yield core, ids["refund.md"], capture
 
 
+def apart(read, seconds: float = 10):
+    """Run ``read`` as another request would: in its own daemon thread, holding no lock (a reader never takes the
+    workspace's lock), and return what it returned (REF S23, the door)."""
+    out: dict = {}
+
+    def body():
+        try:
+            out["value"] = read()
+        except BaseException as exc:  # noqa: BLE001 - raised again in the caller
+            out["error"] = exc
+    thread = threading.Thread(target=body, daemon=True)
+    thread.start()
+    thread.join(seconds)
+    if "error" in out:
+        raise out["error"]
+    return out.get("value")
+
+
 def _publish_midway(core, sid, monkeypatch, *, fail: bool):
     """The answer reads the document's passages at the instant a publish of UNAPPROVED has put its text and passages in
     place and is about to write the record. Restated for the staged publish (REF S23, the Human's decision after this
-    round): with ``fail``, the record's write fails and the old text and passages go back; otherwise it completes."""
+    round): with ``fail``, the record's write fails and the old text and passages go back; otherwise it completes.
+    Restated for the door (REF S23, the Human's decision after round 7): the publish is a job holding the
+    workspace's lock (without it the store refused the write and nothing was staged), and the reader takes the passages
+    in its own thread, holding no lock, as the answer's own request does."""
     store = core.state.answer.retrieval.section_store
     content, register = core.state.content, core.state.register
     original = store.list_for_source
@@ -91,13 +114,13 @@ def _publish_midway(core, sid, monkeypatch, *, fail: bool):
 
         def update(changed_id, **fields):
             if changed_id == sid and "content_sha256" in fields and "sections" not in seen:
-                seen["sections"] = original(sid, sha=sha)  # what this reader, holding its record, takes at this instant
+                seen["sections"] = apart(lambda: original(sid, sha=sha))  # what this reader takes at this instant
                 if fail:
                     raise OSError("disk full")
             return real_update(changed_id, **fields)
         monkeypatch.setattr(register, "update", update)
         try:
-            content._write_version(register.get(sid), UNAPPROVED.encode(), approve=True)
+            as_job(core, lambda: content._write_version(register.get(sid), UNAPPROVED.encode(), approve=True))
         except ContentError:
             pass
         finally:
@@ -153,26 +176,30 @@ def test_scope_h3b_round6_failed_publish_text_read_midway_reaches_answer_scope_o
 def _race_rebuild_with_failed_publish(core, sid, monkeypatch):
     """A facts-map rebuild lists the register (v1 approved) just before a publish of UNAPPROVED, then reads the text
     after the publish wrote it; the publish then fails (a write that fails). Restated for the staged publish (REF S23):
-    the new text is written in the swap, the rebuild reads it against v1's fingerprint, and the swap puts v1 back."""
+    the new text is written in the swap, the rebuild reads it against v1's fingerprint, and the swap puts v1 back.
+    Restated for the door (REF S23, the Human's decision after round 7): every rebuild runs inside a
+    writer (an approval, a move, a delete, the rebuild route), so the rebuild and the publish are each a job holding the
+    workspace's lock (without it the store refused the publish's write, nothing was staged, and the tests passed after
+    a ten-second wait). While the rebuild is paused after listing the register, the publish waits at the lock and has
+    staged nothing; the rebuild then reads v1's text, and the publish stages v2 and fails."""
     register, content, answer = core.state.register, core.state.content, core.state.answer
     approved = [r for r in register.list() if r.approval_status == "approved"]
     assert answer._facts_in_step(approved)  # in step before anything happens
 
-    listed, written, finished = threading.Event(), threading.Event(), threading.Event()
+    listed, release, written = threading.Event(), threading.Event(), threading.Event()
     rebuild_thread: dict = {}
     original_read, original_write = register.read_content, register.stage_content  # the staged publish (REF S23)
 
     def read_content(source_id, sha=None):
-        if source_id == sid and threading.get_ident() == rebuild_thread.get("id") and not written.is_set():
+        if source_id == sid and threading.get_ident() == rebuild_thread.get("id") and not listed.is_set():
             listed.set()  # the rebuild has listed the register (v1 approved) and now reads this document's text
-            assert written.wait(10)
+            release.wait(10)
         return original_read(source_id, sha=sha)
 
     def write_content(source_id, data):
         original_write(source_id, data)
         if source_id == sid and b"NEVERAPPROVED" in data and not written.is_set():
-            written.set()  # the swap has written v2's text: the racing rebuild reads on
-            assert finished.wait(10)
+            written.set()  # the swap has staged v2's text
             raise OSError("disk full")  # then the swap fails, and puts v1's text and passages back
 
     def rebuild_fails():
@@ -183,18 +210,30 @@ def _race_rebuild_with_failed_publish(core, sid, monkeypatch):
 
     def rebuild():
         rebuild_thread["id"] = threading.get_ident()
-        try:
-            core.state.rebuild_ontology()
-        finally:
-            finished.set()
+        as_job(core, core.state.rebuild_ontology)
 
-    worker = threading.Thread(target=rebuild)
+    worker = threading.Thread(target=rebuild, daemon=True)
     worker.start()
     assert listed.wait(10)
     monkeypatch.setattr(content, "rebuild_facts", rebuild_fails)
-    with pytest.raises(ContentError):
-        content._write_version(register.get(sid), UNAPPROVED.encode(), approve=True)
+    outcome: dict = {}
+
+    def publish():
+        try:
+            as_job(core, lambda: content._write_version(register.get(sid), UNAPPROVED.encode(), approve=True))
+            outcome["publish"] = "published"
+        except Exception as exc:  # noqa: BLE001 - checked below
+            outcome["publish"] = exc
+
+    publisher = threading.Thread(target=publish, daemon=True)
+    publisher.start()
+    time.sleep(0.3)
+    assert not written.is_set() and "publish" not in outcome, "the publish wrote while the rebuild held the lock"
+    release.set()
     worker.join(10)
+    publisher.join(10)
+    assert written.is_set(), "the publish never staged its text"
+    assert isinstance(outcome.get("publish"), ContentError), outcome  # the failed swap is reported as failed
     monkeypatch.setattr(register, "read_content", original_read)
     monkeypatch.setattr(register, "stage_content", original_write)
 

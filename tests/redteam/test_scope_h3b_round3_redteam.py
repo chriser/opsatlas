@@ -21,6 +21,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from iam_helpers import sign_in  # noqa: E402
 from test_space_leaks import hermetic, refuse  # noqa: E402
 
+from tests.door_helpers import as_job, decide, writing
+
 HEAD = {"X-OpsAtlas-Space": "acme"}
 QUESTION = "How does the returns desk refund a parcel?"
 
@@ -71,7 +73,7 @@ def acme(tmp_path, monkeypatch):
             assert up.status_code == 200, up.text
             sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
             assert client.post(f"/api/sources/{sid}/ingest", headers=HEAD).status_code == 200
-            approved = client.post(f"/api/governance/sources/{sid}/approve", headers=HEAD)
+            approved = decide(client, sid, headers=HEAD)
             assert approved.status_code == 200, approved.text
             return sid
 
@@ -112,7 +114,8 @@ def test_scope_h3b_round3_control_last_day_in_force_is_given_and_labelled(acme, 
     client, core, add = acme
     os.environ.pop("KP_SCOPE_TODAY", None)
     old = add("PARCELBOOK-OLD", "Returns desk to year end", "boxed")
-    core.state.register.update(old, effective_to="2026-12-31")
+    with writing(core):  # set-up is a job (REF S23, the door)
+        core.state.register.update(old, effective_to="2026-12-31")
     core.state.answer.generator = Echo()
     body = ask(client)
     assert given(body, "PARCELBOOK-OLD")
@@ -125,7 +128,8 @@ def test_scope_h3b_round3_expired_at_midnight_while_prepared_is_still_given(acme
     client, core, add = acme
     os.environ.pop("KP_SCOPE_TODAY", None)
     old = add("PARCELBOOK-OLD", "Returns desk to year end", "boxed")
-    core.state.register.update(old, effective_to="2026-12-31")
+    with writing(core):  # set-up is a job (REF S23, the door)
+        core.state.register.update(old, effective_to="2026-12-31")
 
     def midnight(_call):
         clock.now = date(2027, 1, 1)
@@ -143,7 +147,8 @@ def test_scope_h3b_round3_replaced_at_midnight_while_prepared_is_still_given(acm
     os.environ.pop("KP_SCOPE_TODAY", None)
     old = add("PARCELBOOK-OLD", "Returns desk, current", "boxed")
     new = add("TOTELEDGER-NEW", "Returns desk, next year", "crated")
-    core.state.register.update(new, effective_from="2027-01-01", supersedes=[old])
+    with writing(core):  # set-up is a job (REF S23, the door)
+        core.state.register.update(new, effective_from="2027-01-01", supersedes=[old])
 
     def midnight(_call):
         clock.now = date(2027, 1, 1)
@@ -159,11 +164,14 @@ def test_scope_h3b_round3_replaced_at_midnight_while_prepared_is_still_given(acm
 # ---- Restated: an edit while an answer is prepared applies from the next answer, on every route ----------------------
 
 def test_scope_h3b_round3_control_edit_inside_generation_is_withheld(acme):
+    """Restated for the door (REF S23, the Human's decision after round 7): the edit inside the
+    generation is a job holding the workspace's lock, as the details request would; the ask passes the door and does
+    not wait, so the edit still lands while the answer is prepared."""
     client, core, add = acme
     sid = add("PARCELBOOK-OLD", "Returns desk", "boxed")
 
     def expire(_call):
-        core.state.register.update(sid, effective_to="2026-01-01")
+        as_job(core, core.state.register.update, sid, effective_to="2026-01-01")
     core.state.answer.generator = Echo(expire)
     assert given(ask(client), "PARCELBOOK-OLD")  # judged on the reading taken as it began
     core.state.answer.generator = Echo()
@@ -172,7 +180,9 @@ def test_scope_h3b_round3_control_edit_inside_generation_is_withheld(acme):
 
 def test_scope_h3b_round3_avatar_edit_during_render_is_given(acme):
     """The avatar route: an edit during its rendering applies from the next answer (its missing delivery checks for
-    access and evidence are REF S16b #2136)."""
+    access and evidence are REF S16b #2136). Restated for the door (REF S23, the Human's decision after round 7): the
+    edit is a job holding the workspace's lock, as the details request would; the avatar route passes the door and
+    does not wait, so the edit still lands during the render."""
     client, core, add = acme
     sid = add("PARCELBOOK-OLD", "Returns desk", "boxed")
     service, state = core.state.answer, {"answered": False}
@@ -185,7 +195,7 @@ def test_scope_h3b_round3_avatar_edit_during_render_is_given(acme):
 
     def expire(_call):
         if state["answered"]:  # the natural-style render's model call, after the answer service returned
-            core.state.register.update(sid, effective_to="2026-01-01")
+            as_job(core, core.state.register.update, sid, effective_to="2026-01-01")
     service.answer = answer
     service.generator = Echo(expire)
     response = client.post("/api/avatar/answer", json={"q": QUESTION, "style": "natural"}, headers=HEAD)
@@ -196,7 +206,9 @@ def test_scope_h3b_round3_avatar_edit_during_render_is_given(acme):
 
 
 def test_scope_h3b_round3_ask_edit_after_scope_recheck_before_delivery_is_given(acme):
-    """On /api/ask, an edit landing after the answer is prepared and before it is delivered applies from the next."""
+    """On /api/ask, an edit landing after the answer is prepared and before it is delivered applies from the next.
+    Restated for the door (REF S23, the Human's decision after round 7): the edit is a job holding
+    the workspace's lock, as the details request would; the ask passes the door and does not wait."""
     client, core, add = acme
     sid = add("PARCELBOOK-OLD", "Returns desk", "boxed")
     service, state = core.state.answer, {"answered": False}
@@ -209,7 +221,7 @@ def test_scope_h3b_round3_ask_edit_after_scope_recheck_before_delivery_is_given(
 
     def version_of(source_id, *read):
         if state["answered"]:
-            core.state.register.update(sid, effective_to="2026-01-01")
+            as_job(core, core.state.register.update, sid, effective_to="2026-01-01")
         return original_version(source_id)
     service.answer, service.version_of, service.generator = answer, version_of, Echo()
     assert given(ask(client), "PARCELBOOK-OLD")
@@ -220,14 +232,17 @@ def test_scope_h3b_round3_ask_edit_after_scope_recheck_before_delivery_is_given(
 
 def test_scope_h3b_round3_superseding_source_withdrawn_while_prepared_is_given(acme):
     """The answer rests on NEW (it replaces OLD); NEW is withdrawn while it is prepared. This answer is judged on its
-    reading; the next has OLD back in force and not NEW. (Withdrawal at delivery for every answer is REF S19b #2137.)"""
+    reading; the next has OLD back in force and not NEW. (Withdrawal at delivery for every answer is REF S19b #2137.)
+    Restated for the door (REF S23, the Human's decision after round 7): the withdrawal is a job
+    holding the workspace's lock, as its request would; the ask passes the door and does not wait."""
     client, core, add = acme
     old = add("PARCELBOOK-OLD", "Returns desk, old", "boxed")
     new = add("TOTELEDGER-NEW", "Returns desk, new", "crated")
-    core.state.register.update(new, supersedes=[old])
+    with writing(core):  # set-up is a job (REF S23, the door)
+        core.state.register.update(new, supersedes=[old])
 
     def withdraw(_call):
-        core.state.register.update(new, approval_status="pending")
+        as_job(core, core.state.register.update, new, approval_status="pending")
     core.state.answer.generator = Echo(withdraw)
     body = ask(client)
     assert "PARCELBOOK-OLD" not in body.get("answer", "") and given(body, "TOTELEDGER-NEW")

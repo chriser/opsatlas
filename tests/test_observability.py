@@ -57,7 +57,7 @@ def test_ask_writes_an_audit_trace(tmp_path):
         data={"title": "Controls"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
     client.post("/api/ask", json={"q": "are credit checks mandatory?"})
 
     traces = client.get("/api/observability/traces").json()
@@ -93,7 +93,7 @@ def test_audit_trace_marks_action_boundary_declines(tmp_path):
         data={"title": "Controls"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
     client.post("/api/ask", json={"q": "Can you approve this control change?"})
 
     trace = client.get("/api/observability/traces").json()[0]

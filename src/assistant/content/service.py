@@ -32,7 +32,6 @@ from __future__ import annotations
 import hashlib
 import mimetypes
 import re
-import threading
 import unicodedata
 from dataclasses import dataclass
 from datetime import date
@@ -45,7 +44,7 @@ from ..iam.context import current_principal
 from ..ingestion.service import NotIngestableError, extract_text, stage_sections
 from ..sources import settle as settling
 from ..sources.register import ContentReplaced
-from ..storage import lock_of, locked
+from ..storage import governor, if_free
 from . import text as texts
 from .store import ContentStore, now
 
@@ -54,7 +53,6 @@ ASSET_REF = re.compile(r"/api/content/assets/([A-Za-z0-9._-]+)")
 IMAGE_TYPES = {"image/png": ".png", "image/jpeg": ".jpg", "image/gif": ".gif", "image/webp": ".webp"}
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 MAX_TEXT_CHARS = 400_000
-_DETAILS_LOCK = threading.Lock()  # for a register without an index file (a test double)
 # Latin letters (A to Z, Latin-1 and Latin Extended-A, without the multiplication and division signs) and digits 0 to 9.
 _LATIN = "A-Za-z0-9\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u017f"
 SITE_NAME = re.compile(f"[{_LATIN} '\u2019-]{{1,60}}")
@@ -161,7 +159,11 @@ class ContentService:
         the newest kept version with its text, else a new "imported" one."""
         if source.history_n is not None:
             return
-        with self._space_lock():  # one writer per space (REF S23, S7): a publish may commit meanwhile
+        # A write: under the workspace's lock, held by a writer or start-up, or taken by a reader only if free; a
+        # reader never waits, and the next one names the version instead (REF S23, S7).
+        with if_free(governor(self.store)) as free:
+            if not free:
+                return
             source = self.register.get(source.id)
             if source is None or source.history_n is not None:
                 return
@@ -241,11 +243,15 @@ class ContentService:
     def _open_suggestions(self) -> dict:
         if not self.hooks["all_suggestions"]:
             return {}
-        with self.store.lock:
-            # A workspace's suggestions may cover documents kept in other spaces (KS S3): this service speaks, and keeps
-            # suggestion history, only for the documents in its own register.
-            current = {sid: items for sid, items in self.hooks["all_suggestions"]().items() if self.register.get(sid) is not None}
-            self._reconcile(current)
+        # A workspace's suggestions may cover documents kept in other spaces (KS S3): this service speaks, and keeps
+        # suggestion history, only for the documents in its own register. The scan holds no lock; noting what it found
+        # is a write, done when the workspace's lock is free or held by this request, else by the next reader: a reader
+        # never waits, and never shuts writers out while it scans (REF S23, S7, red team round 7).
+        current = {sid: items for sid, items in self.hooks["all_suggestions"]().items() if self.register.get(sid) is not None}
+        with if_free(governor(self.store)) as free:
+            if free:
+                with self.store.lock:
+                    self._reconcile(current)
         return current
 
     def _reconcile(self, current: dict) -> None:
@@ -315,54 +321,52 @@ class ContentService:
 
     def accept_suggestion(self, source_id: str, key: str, note: str = "") -> dict:
         """The Human keeps the wording as it is. The suggestion stops being raised for this document, Tibi included."""
-        with self.store.lock:
-            source = self._source(source_id)
-            suggestion = next((s for s in self._open_suggestions().get(source_id, []) if s["key"] == key), None)
-            if suggestion is None:
-                raise NotFound("That suggestion is no longer open")
-            if suggestion.get("other"):
-                raise ContentError("A conflict or duplicate involves another record; settle it with Tibi or edit the passage")
-            if not self.hooks["keep"]:
-                raise ContentError("This workspace cannot keep a suggestion as it is")
-            note = " ".join(str(note or "").split())[:500]
-            self.hooks["keep"](source, suggestion, note)
-            self.store.unsee(source_id, key)
-            self.store.settle(source_id, suggestion, "accepted", source.version, self.operator.name, self.operator.role, note or None)
-            self.store.log(source_id, self.operator.name, "accepted a suggestion as it is",
-                           _clip(suggestion["text"] + (f" Reason: {note}" if note else "")))
+        source = self._source(source_id)
+        suggestion = next((s for s in self._open_suggestions().get(source_id, []) if s["key"] == key), None)
+        if suggestion is None:
+            raise NotFound("That suggestion is no longer open")
+        if suggestion.get("other"):
+            raise ContentError("A conflict or duplicate involves another record; settle it with Tibi or edit the passage")
+        if not self.hooks["keep"]:
+            raise ContentError("This workspace cannot keep a suggestion as it is")
+        note = " ".join(str(note or "").split())[:500]
+        self.hooks["keep"](source, suggestion, note)
+        self.store.unsee(source_id, key)
+        self.store.settle(source_id, suggestion, "accepted", source.version, self.operator.name, self.operator.role, note or None)
+        self.store.log(source_id, self.operator.name, "accepted a suggestion as it is",
+                       _clip(suggestion["text"] + (f" Reason: {note}" if note else "")))
         return self.suggestion_state(source_id)
 
     def reopen_suggestion(self, source_id: str, settled_id: str) -> dict:
         """Undo "accept as it is": the suggestion is raised again."""
-        with self.store.lock:
-            source = self._source(source_id)
-            row = self.store.settled_row(settled_id)
-            if row is None or row["source_id"] != source_id:
-                raise NotFound("No such suggestion")
-            if row["outcome"] != "accepted":
-                raise ContentError("Only a suggestion accepted as it is can be reopened")
-            if self.hooks["unkeep"]:
-                self.hooks["unkeep"](source, row["data"])
-            self.store.unsettle(settled_id)
-            self.store.log(source_id, self.operator.name, "reopened a suggestion", _clip(row["data"]["text"]))
+        source = self._source(source_id)
+        row = self.store.settled_row(settled_id)
+        if row is None or row["source_id"] != source_id:
+            raise NotFound("No such suggestion")
+        if row["outcome"] != "accepted":
+            raise ContentError("Only a suggestion accepted as it is can be reopened")
+        if self.hooks["unkeep"]:
+            self.hooks["unkeep"](source, row["data"])
+        self.store.unsettle(settled_id)
+        self.store.log(source_id, self.operator.name, "reopened a suggestion", _clip(row["data"]["text"]))
         return self.suggestion_state(source_id)
 
     def decide(self, source_id: str, expected_sha: str, approve: bool) -> dict:
-        """Approve or reject the published version the Human has just read, without editing it. Under the space's lock,
-        so the version decided on is the one read: no new version can be written in between (REF S23, S7)."""
-        with self._space_lock():
-            source = self._source(source_id)
-            if sha(self.published_text(source)) != expected_sha:
-                raise ContentError("The document changed since you opened it; reload it and review it again")
-            state = "approved" if approve else "rejected"
-            if source.approval_status == state:
-                raise ContentError(f"The document is already {state}")
-            if self.hooks["decide"]:
-                self.hooks["decide"](source, approve)
-            elif approve:
-                self._approve(source_id)
-            else:
-                self._reject(source_id)
+        """Approve or reject the published version the Human has just read, without editing it. Under the workspace's
+        lock, taken at the door, so the version decided on is the one read: no new version can be written in between
+        (REF S23, S7, S8)."""
+        source = self._source(source_id)
+        if sha(self.published_text(source)) != expected_sha:
+            raise ContentError("The document changed since you opened it; reload it and review it again")
+        state = "approved" if approve else "rejected"
+        if source.approval_status == state:
+            raise ContentError(f"The document is already {state}")
+        if self.hooks["decide"]:
+            self.hooks["decide"](source, approve)
+        elif approve:
+            self._approve(source_id, source.content_sha256)
+        else:
+            self._reject(source_id, source.content_sha256)
         self.store.log(source_id, self.operator.name, "approved" if approve else "rejected",
                        f"Version {source.version}" + ("" if approve else ": not used for answers"))
         return self.document(source_id)
@@ -403,38 +407,36 @@ class ContentService:
         """The declared ``save_document`` action: the text becomes a draft submitted for approval. The published text,
         and so every answer, stays as it is until a person publishes the draft."""
         source_id, text = str(context.params["source_id"]), str(context.params["text"])
-        with self.store.lock:
-            if text == self.published_text(self._source(source_id)):
-                raise ContentError("The text is the same as the published version")
-            self.save_draft(source_id, text)
-            if (self.store.document(source_id) or {}).get("status") != "submitted":
-                self.submit(source_id, "Submitted through the save_document action")
-            return {"response": self.document(source_id)}
+        if text == self.published_text(self._source(source_id)):
+            raise ContentError("The text is the same as the published version")
+        self.save_draft(source_id, text)
+        if (self.store.document(source_id) or {}).get("status") != "submitted":
+            self.submit(source_id, "Submitted through the save_document action")
+        return {"response": self.document(source_id)}
 
     def forget(self, source_id: str, last_text: bytes = b"") -> dict:
         """A deleted source leaves nothing here (REF S4): its history goes, and so do the images it used that no other
         document's text or kept version uses."""
-        with self.store.lock:
-            texts_before = [last_text.decode("utf-8", "replace"), *self.store.version_texts(source_id)]
-            draft = (self.store.document(source_id) or {}).get("draft_text")
-            if draft:
-                texts_before.append(draft)
-            removed = self.store.forget_document(source_id)
-            in_use = set()
-            for other in self.register.list():
-                try:
-                    in_use |= set(ASSET_REF.findall(self.register.read_content(other.id).decode("utf-8", "replace")))
-                except OSError:
-                    continue
-            for text in self.store.version_texts():
-                in_use |= set(ASSET_REF.findall(text))
-            images = 0
-            for name in {n for text in texts_before for n in ASSET_REF.findall(text)} - in_use:
-                path = self.store.assets / name
-                if path.is_file():
-                    path.unlink()
-                    images += 1
-            return {"rows": removed, "images": images}
+        texts_before = [last_text.decode("utf-8", "replace"), *self.store.version_texts(source_id)]
+        draft = (self.store.document(source_id) or {}).get("draft_text")
+        if draft:
+            texts_before.append(draft)
+        removed = self.store.forget_document(source_id)
+        in_use = set()
+        for other in self.register.list():
+            try:
+                in_use |= set(ASSET_REF.findall(self.register.read_content(other.id).decode("utf-8", "replace")))
+            except OSError:
+                continue
+        for text in self.store.version_texts():
+            in_use |= set(ASSET_REF.findall(text))
+        images = 0
+        for name in {n for text in texts_before for n in ASSET_REF.findall(text)} - in_use:
+            path = self.store.assets / name
+            if path.is_file():
+                path.unlink()
+                images += 1
+        return {"rows": removed, "images": images}
 
     def _record_edited(self, source, text: str) -> None:
         """The edit's event; one the event store does not take never fails the publish it follows (REF S23, S5)."""
@@ -484,36 +486,39 @@ class ContentService:
 
     def publish(self, source_id: str, draft_sha: str, note: str = "") -> dict:
         """The Human's approval: the submitted draft becomes the source's next version."""
-        with self._space_lock(), self.store.lock:  # the space lock first (REF S23, S7)
-            source = self._source(source_id)
-            state = self.store.document(source_id) or {}
-            if state.get("status") != "submitted" or state.get("draft_text") is None:
-                raise ContentError("Submit the draft for approval first")
-            text = state["draft_text"]
-            if sha(text) != draft_sha:
-                raise ContentError("The draft changed since you reviewed it; review it again")
-            published = self.published_text(source)
-            if state.get("base_sha") and state["base_sha"] != sha(published):
-                raise ContentError("The published document changed after this draft was started; compare the versions "
-                                   "and restore before approving")
-            if not text.strip():
-                raise ContentError("An empty document cannot be published")
-            own = self._own_draft(state)
-            self._ensure_history(source, published)
-            content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
-                                else ((text if text.endswith("\n") else text + "\n").encode(), None))
-            written = content.decode("utf-8", "replace")
-            updated = self._write_version(source, content, approve=True, history={
-                "label": "approved", "note": note.strip()[:1000] or state.get("submitted_note")})
-            n = updated.history_n
-            extra = self.hooks["published"](updated, written, context, True) if self.hooks["published"] else {}
-            self._record_edited(updated, written)
-            self.store.clear_draft(source_id)
-            self.store.log(source_id, self.operator.name, "approved and published",
-                           f"Version {updated.version}" + (f": {note.strip()[:300]}" if note.strip() else "")
-                           + ("; approved by its author under solo-operator mode" if own else ""))
-            return {"document": self.document(source_id), "version": n, "source_version": updated.version,
-                    "self_approved": own, **(extra or {})}
+        source = self._source(source_id)
+        state = self.store.document(source_id) or {}
+        if state.get("status") != "submitted" or state.get("draft_text") is None:
+            raise ContentError("Submit the draft for approval first")
+        text = state["draft_text"]
+        if sha(text) != draft_sha:
+            raise ContentError("The draft changed since you reviewed it; review it again")
+        published = self.published_text(source)
+        if state.get("base_sha") and state["base_sha"] != sha(published):
+            raise ContentError("The published document changed after this draft was started; compare the versions "
+                               "and restore before approving")
+        if not text.strip():
+            raise ContentError("An empty document cannot be published")
+        own = self._own_draft(state)
+        self._ensure_history(source, published)
+        content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
+                            else ((text if text.endswith("\n") else text + "\n").encode(), None))
+        written = content.decode("utf-8", "replace")
+        updated = self._write_version(source, content, approve=True, history={
+            "label": "approved", "note": note.strip()[:1000] or state.get("submitted_note")})
+        n = updated.history_n
+        # The version is live (its record names it): nothing after this fails the publish (REF S23, S5, red team round 7).
+        extra = self._after_commit(source_id, "the workspace's records were not updated",
+                                   lambda: self.hooks["published"](updated, written, context, True)
+                                   if self.hooks["published"] else {}) or {}
+        self._record_edited(updated, written)
+        self._after_commit(source_id, "the draft was not cleared", lambda: self.store.clear_draft(source_id))
+        self._after_commit(source_id, "the approval was not logged", lambda: self.store.log(
+            source_id, self.operator.name, "approved and published",
+            f"Version {updated.version}" + (f": {note.strip()[:300]}" if note.strip() else "")
+            + ("; approved by its author under solo-operator mode" if own else "")))
+        return {"document": self.document(source_id), "version": n, "source_version": updated.version,
+                "self_approved": own, **(extra or {})}
 
     def _own_draft(self, state: dict) -> bool:
         """True when the person publishing wrote the draft. Allowed only where self_approval says so (solo-operator
@@ -588,11 +593,6 @@ class ContentService:
         so an action that failed did not commit. Recognising it by its text would take a same-text publish as done."""
         return False
 
-    def _space_lock(self):
-        """The space's one lock (REF S23, S7: one writer per space), re-entrant within a thread."""
-        index = lock_of(self.register)
-        return locked(index) if index is not None else _DETAILS_LOCK
-
     @staticmethod
     def _committed(landed, n: int) -> bool:
         """A commit is recognised by its record naming the version entry created for it, never by its text (a publish of
@@ -626,42 +626,41 @@ class ContentService:
         names that version; the staged files are then moved into place. Before the commit nothing live has changed,
         and a failure discards what was staged and removes the version created for it; after it, a reader holding
         the new record moves anything not yet moved, after a crash or restart too."""
-        with self._space_lock():
-            settling.settle(self.register, self.section_store, source_id)
-            current = self.register.get(source_id)
-            if current is None:
-                raise ContentError("No such source")
-            # The version is given here, from the record as it stands under the lock, so two publishes at once get
-            # one number each (REF S23, S4).
-            fields = {**fields, "version": current.version + 1}
-            new, text = fields["content_sha256"], content.decode("utf-8", "replace")
-            try:
-                self.register.stage_content(source_id, content)
-                self.section_store.stage_for_source(source_id, sections, sha=new)
-                # Uncommitted: invisible until the record names it, and its number never given again (REF S23, S6).
-                n = self.store.add_version(source_id, text, sha(text), history["label"], history["author"],
-                                           history["role"], history["note"], fields["version"], committed=False)
-            except Exception:
-                self._discard_staged(source_id)
+        settling.settle(self.register, self.section_store, source_id)
+        current = self.register.get(source_id)
+        if current is None:
+            raise ContentError("No such source")
+        # The version is given here, from the record as it stands under the lock, so two publishes at once get
+        # one number each (REF S23, S4).
+        fields = {**fields, "version": current.version + 1}
+        new, text = fields["content_sha256"], content.decode("utf-8", "replace")
+        try:
+            self.register.stage_content(source_id, content)
+            self.section_store.stage_for_source(source_id, sections, sha=new)
+            # Uncommitted: invisible until the record names it, and its number never given again (REF S23, S6).
+            n = self.store.add_version(source_id, text, sha(text), history["label"], history["author"],
+                                       history["role"], history["note"], fields["version"], committed=False)
+        except Exception:
+            self._discard_staged(source_id)
+            raise
+        fields.update(history_n=n, history_sha=sha(text))
+        try:
+            record = self.register.update(source_id, **fields)  # the commit, naming its version entry
+        except Exception:
+            landed = self.register.get(source_id)
+            if not self._committed(landed, n):
+                self._discard_staged(source_id)  # the entry stays uncommitted: it names nothing
                 raise
-            fields.update(history_n=n, history_sha=sha(text))
-            try:
-                record = self.register.update(source_id, **fields)  # the commit, naming its version entry
-            except Exception:
-                landed = self.register.get(source_id)
-                if not self._committed(landed, n):
-                    self._discard_staged(source_id)  # the entry stays uncommitted: it names nothing
-                    raise
-                record = landed  # the record's write landed before the error: the version is committed
-            if record is None:
-                self._discard_staged(source_id)
-                raise ContentError("No such source")
-            try:
-                self.store.commit_version(source_id, n)
-            except Exception:  # the record names it, so the views show it anyway
-                pass
-            self._move_into_place(source_id)
-            return record
+            record = landed  # the record's write landed before the error: the version is committed
+        if record is None:
+            self._discard_staged(source_id)
+            raise ContentError("No such source")
+        try:
+            self.store.commit_version(source_id, n)
+        except Exception:  # the record names it, so the views show it anyway
+            pass
+        self._move_into_place(source_id)
+        return record
 
     def _move_into_place(self, source_id: str) -> None:
         try:
@@ -705,6 +704,18 @@ class ContentService:
                 continue
         self._note_lost_event(record.id, "source_approved")
 
+    def _after_commit(self, source_id: str, failed: str, step):
+        """A step after a version is committed (its record names it). It never fails the publish (REF S23, S5): a
+        failure is recorded in the document's activity instead, so it is not lost unseen."""
+        try:
+            return step()
+        except Exception:
+            try:
+                self.store.log(source_id, "OpsAtlas", "step not completed", f"The new version is live, but {failed}")
+            except Exception:
+                pass
+            return None
+
     def _note_lost_event(self, source_id: str, event: str) -> None:
         """An event the event store did not take is recorded in the document's activity, so it is not lost unseen."""
         try:
@@ -715,36 +726,45 @@ class ContentService:
     def rename(self, source_id: str, title: str) -> dict:
         """A new title. Where the title is part of the document (a record's heading), this writes a new version and
         keeps the approval as it was: an approved record is re-approved, a pending one stays pending."""
-        with self._space_lock(), self.store.lock:  # the space lock first (REF S23, S7)
-            source = self._source(source_id)
-            title = " ".join(str(title or "").split())[:300]
-            if not title:
-                raise ContentError("A document needs a title")
-            if title == source.title:
-                raise ContentError("That is already its title")
-            old = source.title
-            text = self.hooks["retitle"](source, title) if self.hooks["retitle"] else None
-            if text is None:
-                self.register.update(source_id, title=title)
-                self.store.log(source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”")
-                return self.document(source_id)
-            if (self.store.document(source_id) or {}).get("draft_text") is not None:
-                raise ContentError("This document has a draft; rename it in the draft, or discard the draft first")
-            self._ensure_history(source, self.published_text(source))
-            content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
-                                else ((text if text.endswith("\n") else text + "\n").encode(), None))
-            approved = source.approval_status == "approved"
-            written = content.decode("utf-8", "replace")
-            updated = self._write_version(source, content, approve=approved, extra={"title": title},
-                                          history={"label": "renamed", "note": f"Renamed from “{old}” to “{title}”"})
-            if self.hooks["published"]:
-                self.hooks["published"](self.register.get(source_id), written, context, approved)
-            self.store.log(source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”; version {updated.version}")
+        source = self._source(source_id)
+        title = " ".join(str(title or "").split())[:300]
+        if not title:
+            raise ContentError("A document needs a title")
+        if title == source.title:
+            raise ContentError("That is already its title")
+        old = source.title
+        text = self.hooks["retitle"](source, title) if self.hooks["retitle"] else None
+        if text is None:
+            self.register.update(source_id, title=title)
+            self.store.log(source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”")
             return self.document(source_id)
+        if (self.store.document(source_id) or {}).get("draft_text") is not None:
+            raise ContentError("This document has a draft; rename it in the draft, or discard the draft first")
+        self._ensure_history(source, self.published_text(source))
+        content, context = (self.hooks["prepare"](source, text) if self.hooks["prepare"]
+                            else ((text if text.endswith("\n") else text + "\n").encode(), None))
+        approved = source.approval_status == "approved"
+        written = content.decode("utf-8", "replace")
+        updated = self._write_version(source, content, approve=approved, extra={"title": title},
+                                      history={"label": "renamed", "note": f"Renamed from “{old}” to “{title}”"})
+        if self.hooks["published"]:  # after the commit: it never fails the rename (REF S23, S5)
+            self._after_commit(source_id, "the workspace's records were not updated",
+                               lambda: self.hooks["published"](self.register.get(source_id), written, context, approved))
+        self._after_commit(source_id, "the rename was not logged", lambda: self.store.log(
+            source_id, self.operator.name, "renamed", f"From “{old}” to “{title}”; version {updated.version}"))
+        return self.document(source_id)
 
     # ---- the library: groups and where each document sits (CM S27) ----------------------------------
 
     def library(self) -> dict:
+        # Seeding the grouping and placing new documents are writes: done when the workspace's lock is free or held by
+        # this request, else by the next reader; a reader never waits (REF S23, S7).
+        with if_free(governor(self.store)) as free:
+            if free:
+                self._place_new()
+        return {"groups": self.store.groups(), "placements": self.store.placements()}
+
+    def _place_new(self) -> None:
         self._seed_library()
         placements = self.store.placements()
         default = self.hooks["default_library"]() if self.hooks["default_library"] else None
@@ -760,7 +780,6 @@ class ContentService:
                 else:
                     parent = f"group:{keys[key]}" if key in keys and keys[key] in groups else None
                 self.store.place(source.id, parent)
-        return {"groups": self.store.groups(), "placements": self.store.placements()}
 
     def _seed_library(self) -> None:
         """The first time, a workspace's own grouping is created; the Human reshapes it from then on."""
@@ -882,21 +901,28 @@ class ContentService:
         source = self.register.get(key)
         return f"“{source.title}”" if source else "a document"
 
-    def _approve(self, source_id: str) -> None:
+    def _approve(self, source_id: str, sha: str) -> None:
+        """Approve the text ``sha`` names, the one the Human read (REF S23, S8); any other is refused."""
         if self.actions is None:
+            if self._source(source_id).content_sha256 != sha:
+                raise ContentError("The document changed since you opened it; reload it and review it again")
             self.register.update(source_id, approval_status="approved")
             return
         from ..ontology.actions import acting_person
-        result = self.actions.execute("approve_source", {"source_id": source_id}, acting_person(self._operator.name))
+        result = self.actions.execute("approve_source", {"source_id": source_id, "sha": sha},
+                                      acting_person(self._operator.name))
         if result.outcome != "ok":
             raise ContentError(result.message or "The approval action failed")
 
-    def _reject(self, source_id: str) -> None:
+    def _reject(self, source_id: str, sha: str) -> None:
         if self.actions is None:
+            if self._source(source_id).content_sha256 != sha:
+                raise ContentError("The document changed since you opened it; reload it and review it again")
             self.register.update(source_id, approval_status="rejected")
             return
         from ..ontology.actions import acting_person
-        result = self.actions.execute("reject_source", {"source_id": source_id}, acting_person(self._operator.name))
+        result = self.actions.execute("reject_source", {"source_id": source_id, "sha": sha},
+                                      acting_person(self._operator.name))
         if result.outcome != "ok":
             raise ContentError(result.message or "The rejection action failed")
 
@@ -997,11 +1023,9 @@ class ContentService:
     # ---- details, activity, suggestions, images -----------------------------------------------
 
     def update_details(self, source_id: str, fields: dict) -> dict:
-        # Two edits at once are applied one at a time, so each is checked against the record as stored (red team, REF
-        # H3b: two edits, one setting the start and one the end, could otherwise both pass and store an end first).
-        index = lock_of(self.register)
-        with locked(index) if index is not None else _DETAILS_LOCK:
-            return self._update_details(source_id, fields)
+        # Two edits at once are applied one at a time, under the workspace's lock taken at the door, so each is checked
+        # against the record as stored (red team, REF H3b; REF S23, S7).
+        return self._update_details(source_id, fields)
 
     def _update_details(self, source_id: str, fields: dict) -> dict:
         source = self._source(source_id)

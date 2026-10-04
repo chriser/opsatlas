@@ -202,13 +202,14 @@ def test_an_agent_cannot_run_a_knowledge_change_without_a_persons_approval(tmp_p
     engine.register_handler("approve_source", lambda context: ran.append(context.params["source_id"]) or {})
     engine.register_validation_rule("source_exists", lambda c: ValidationResult(rule="source_exists", passed=True))
     engine.register_validation_rule("not_already_approved", lambda c: ValidationResult(rule="not_already_approved", passed=True))
+    engine.register_validation_rule("names_current_text", lambda c: ValidationResult(rule="names_current_text", passed=True))
     for effect in ("refresh_process_registry", "rebuild_ontology", "record_analytics_event"):
         engine.register_side_effect(effect, lambda context, result: {})
 
-    alone = engine.execute("approve_source", {"source_id": "s1"}, ActionActor(type="agent", id="agent-run-1"))
+    alone = engine.execute("approve_source", {"source_id": "s1", "sha": "0" * 64}, ActionActor(type="agent", id="agent-run-1"))
     assert alone.outcome == "rejected" and alone.failed_rule == "human_approval_required" and ran == []
 
-    approved = engine.execute("approve_source", {"source_id": "s1"},
+    approved = engine.execute("approve_source", {"source_id": "s1", "sha": "0" * 64},
                               ActionActor(type="agent", id="agent-run-1", approved_by="user-123"))
     assert approved.outcome == "ok" and ran == ["s1"]
     assert engine.action_log.recent()[0].actor.approved_by == "user-123"

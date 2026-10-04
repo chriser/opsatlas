@@ -10,6 +10,7 @@ from assistant.process.parser import parse_process
 from services.process_diagram.engine import render_process_chart
 from services.process_diagram.models import ProcessChartRenderRequest
 from services.sme_interviewer import process_model as pm
+from tests.door_helpers import decide
 
 
 def interviewed():
@@ -118,7 +119,7 @@ def test_a_saved_capture_waits_for_approval_in_the_organisation_then_feeds_its_r
     assert source in {s['id'] for s in sales.get('/api/sources', headers=bipi).json()}
     assert source not in {s['id'] for s in sales.get('/api/sources').json()}  # the organisation's, not the guide's
     assert sales.get('/api/process/registry', headers=bipi).json() == []  # not until the Human approves it
-    assert sales.post(f'/api/governance/sources/{source}/approve', headers=bipi).status_code == 200
+    assert decide(sales, source, headers=bipi).status_code == 200
     [record] = sales.get('/api/process/registry', headers=bipi).json()
     assert record['name'] == 'Ordering parts' and record['process_model']['processes'][0]['name'] == 'Ordering parts'
     assert sales.get(f'/api/process/diagrams/{source}', headers=bipi).json()['status'] == 'unavailable'

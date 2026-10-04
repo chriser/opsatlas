@@ -6,9 +6,12 @@ from __future__ import annotations
 
 import os
 import socket
+import threading
+import time
 
 import pytest
 
+from tests.door_helpers import as_job, decide, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -73,7 +76,7 @@ def add(client, name: str, text: str, approve: bool = True) -> str:
     sid = body["id"] if "id" in body else body["source"]["id"]
     assert client.post(f"/api/sources/{sid}/ingest", headers=HEAD).status_code == 200
     if approve:
-        assert client.post(f"/api/governance/sources/{sid}/approve", headers=HEAD).status_code == 200
+        assert decide(client, sid, headers=HEAD).status_code == 200
     return sid
 
 
@@ -113,7 +116,8 @@ def test_scope_h3b_round5_out_of_step_facts_map_still_lets_process_registry_answ
     client, core, show = space
     add(client, "po.md", PROCESS_DOC)
     other = add(client, "other.md", "# Travel\n\nTrain tickets are booked through the travel desk.\n", approve=False)
-    core.state.register.update(other, approval_status="approved")  # approved; the facts map not yet rebuilt
+    with writing(core):  # set-up is a job (REF S23, the door)
+        core.state.register.update(other, approval_status="approved")  # approved; the facts map not yet rebuilt
     scope_on()
     approved = [r for r in core.state.register.list() if r.approval_status == "approved"]
     assert not core.state.answer._facts_in_step(approved)  # the map is out of step with this reading
@@ -164,13 +168,17 @@ def test_scope_h3b_round5_control_reading_text_reaches_answer(space):
 
 def test_scope_h3b_round5_new_version_landing_after_reading_reaches_this_answer(space, monkeypatch):
     """P6: the reading has version 1 approved. A new version (not yet approved) lands right after the reading; the
-    answer's passages are read live from the section store, so the pending version-2 text reaches this answer."""
+    answer's passages are read live from the section store, so the pending version-2 text reaches this answer.
+    Restated for the door (REF S23, the Human's decision after round 7): the new version's writes are
+    a job holding the workspace's lock, as the publish request would; the ask passes the door and does not wait, so the
+    new version still lands right after the reading."""
     client, core, show = space
     sid = add(client, "refunds.md", "# Refunds\n\nRefunds are paid within 14 days. MARKER-V1.\n")
     scope_on()
     answer = core.state.answer
     proxy = EditAfterReading(answer.retrieval.register,
-                             lambda: _publish_pending_v2(core, sid, "# Refunds\n\nRefunds are paid within 90 days. MARKER-V2-PENDING.\n"))
+                             lambda: as_job(core, _publish_pending_v2, core, sid,
+                                            "# Refunds\n\nRefunds are paid within 90 days. MARKER-V2-PENDING.\n"))
     monkeypatch.setattr(answer.retrieval, "register", proxy)
     _, prompt = ask(client, show, "How long do refunds take?")
     assert core.state.register.get(sid).approval_status == "pending"  # version 2 was never approved
@@ -262,24 +270,39 @@ def test_scope_h3b_round5_facts_map_rebuilt_mid_publish_carries_unapproved_text(
     the publish then fails. Restated after the Human's decision (fix the publish order) to drive the real publish: the
     rebuild reads the new text against version 1's fingerprint and leaves it out. Restated again for the staged publish
     (REF S23): the swap fails and puts the old text and passages back; the record never changed. No fact from the
-    never-approved text answers, and the map is in step with the register."""
+    never-approved text answers, and the map is in step with the register. Restated for the door (REF S23, the Human's
+    decision after round 7): the publish is a job holding the workspace's lock (without it the store refused the write,
+    and the test passed without staging anything); the other approval's rebuild is a job too, so it waits at the lock
+    while the publish is staged and rebuilds once the publish has failed."""
     client, core, show = space
     sid = add(client, "po.md", TABLE_DOC)
     register, content = core.state.register, core.state.content
     real_stage = register.stage_content
+    rebuild: dict = {}
+
+    def other_approval_rebuilds():
+        as_job(core, core.state.rebuild_ontology)
+        rebuild["done"] = True
 
     def stage_rebuild_then_fail(source_id, data):  # the staged publish (REF S23): the new text staged beside the live one
         real_stage(source_id, data)
         if b"Finance director" in data:
-            core.state.rebuild_ontology()  # another approval's rebuild, landing as the new text is staged
+            rebuild["thread"] = threading.Thread(target=other_approval_rebuilds, daemon=True)
+            rebuild["thread"].start()  # another approval's rebuild, arriving as the new text is staged
+            time.sleep(0.3)
+            rebuild["waited"] = "done" not in rebuild
             raise OSError("disk full")  # then the publish fails, and what was staged is discarded
     register.stage_content = stage_rebuild_then_fail
     try:
         with pytest.raises(Exception):
-            content._write_version(register.get(sid), TABLE_DOC.replace("Procurement manager", "Finance director").encode(),
-                                   approve=True)
+            as_job(core, lambda: content._write_version(
+                register.get(sid), TABLE_DOC.replace("Procurement manager", "Finance director").encode(), approve=True))
     finally:
         register.stage_content = real_stage
+    assert "thread" in rebuild, "the publish never staged its text"
+    rebuild["thread"].join(10)
+    assert rebuild.get("waited"), "the other approval's rebuild ran while the publish held the workspace's lock"
+    assert rebuild.get("done"), "the other approval's rebuild did not run once the publish had failed"
     assert register.get(sid).approval_status == "approved" and register.get(sid).version == 1
     scope_on()
     approved = [r for r in register.list() if r.approval_status == "approved"]

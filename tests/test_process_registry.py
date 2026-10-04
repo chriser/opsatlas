@@ -206,7 +206,7 @@ def test_read_endpoint_does_not_write_registry_and_approve_refreshes(tmp_path):
     client.headers.update({"Authorization": f"Bearer {token}"})
     rec = client.post("/api/sources/upload", files={"file": ("p1.md", PACK.encode(), "text/markdown")}, data={"title": "Pack 1"}).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")  # approve persists the registry
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})  # approve persists the registry
 
     reg_file = reg.base_dir / "process_registry.json"
     assert reg_file.exists()  # approve refreshed the persisted registry
@@ -230,7 +230,7 @@ def test_process_registry_endpoint(tmp_path):
     client.headers.update({"Authorization": f"Bearer {token}"})
     rec = client.post("/api/sources/upload", files={"file": ("p1.md", PACK.encode(), "text/markdown")}, data={"title": "Pack 1"}).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
 
     out = client.get("/api/process/registry").json()
     assert len(out) == 1 and out[0]["name"] == "End-to-End Supplier Setup Process"

@@ -7,9 +7,11 @@ from __future__ import annotations
 import os
 import socket
 import threading
+import time
 
 import pytest
 
+from tests.door_helpers import as_job, decide, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -61,7 +63,7 @@ def add(client, name: str, text: str, *, approve: bool = True) -> str:
     assert source_id, body
     assert client.post(f"/api/sources/{source_id}/ingest", headers=SPACE).status_code == 200
     if approve:
-        response = client.post(f"/api/governance/sources/{source_id}/approve", headers=SPACE, json={})
+        response = decide(client, source_id, headers=SPACE)
         assert response.status_code == 200, response.text
     return source_id
 
@@ -91,34 +93,39 @@ def test_control_sequential_edits_cannot_make_a_record_end_before_it_starts(sale
 
 def test_two_concurrent_edits_store_a_record_that_ends_before_it_starts(sales):
     """P3: one PATCH sets the start, another at the same moment sets an earlier end; each checks the record as it read
-    it (no start, no end), both pass, and the stored record ends before it starts."""
+    it (no start, no end), both pass, and the stored record ends before it starts. Restated for the door (REF S23, the
+    Human's decision after round 7): each edit is a request that takes the workspace's lock at the door, so the second
+    cannot read the record while the first, paused after its read, holds the lock (before, each waited for the other
+    to read, which now only timed out); the second then reads the record as the first stored it."""
     client, core, _ = sales
     doc = add(client, "window.md", "# Delivery window\n\nDeliveries arrive between six and nine.\n")
     content = core.state.content
-    barrier = threading.Barrier(2)
-    real_source, waited = content._source, []
+    first_read, release = threading.Event(), threading.Event()
+    real_source, reads = content._source, []
 
-    def both_read_first(source_id):  # each request reads the record before either writes (two requests at once)
+    def first_pauses_after_reading(source_id):  # the first request has read the record and not yet written
         record = real_source(source_id)
-        if len(waited) < 2:
-            waited.append(1)
-            try:
-                barrier.wait(timeout=5)
-            except threading.BrokenBarrierError:
-                pass
+        reads.append(source_id)
+        if len(reads) == 1:
+            first_read.set()
+            release.wait(5)
         return record
 
-    content._source = both_read_first
+    content._source = first_pauses_after_reading
     statuses: dict = {}
 
     def edit(name, **fields):
         statuses[name] = details(client, doc, **fields).status_code
 
-    threads = [threading.Thread(target=edit, args=("from",), kwargs={"effective_from": "2027-06-01"}),
-               threading.Thread(target=edit, args=("to",), kwargs={"effective_to": "2027-01-01"})]
-    for t in threads:
-        t.start()
-    for t in threads:
+    first = threading.Thread(target=edit, args=("from",), kwargs={"effective_from": "2027-06-01"}, daemon=True)
+    second = threading.Thread(target=edit, args=("to",), kwargs={"effective_to": "2027-01-01"}, daemon=True)
+    first.start()
+    assert first_read.wait(5)
+    second.start()
+    time.sleep(0.3)
+    assert len(reads) == 1 and "to" not in statuses, "the second edit read the record while the first held the lock"
+    release.set()
+    for t in (first, second):
         t.join(timeout=20)
     content._source = real_source
     stored = core.state.register.get(doc)
@@ -191,7 +198,8 @@ def _big_old_and_pending_new(client, core):
                                        "per pallet for every pallet weight check." + FILLER)
     new = add(client, "loads-2026.md", "# Loads 2026\n\n## Pallet weight limit\n\nThe pallet weight limit is 800 kg "
                                        "per pallet for every pallet weight check.\n", approve=False)
-    core.state.register.update(new, supersedes=[old])
+    with writing(core):  # set-up is a job (REF S23, the door)
+        core.state.register.update(new, supersedes=[old])
     assert sum(len(s.text) for s in core.state.answer.retrieval.section_store.list_for_source(old)) > 24000
     return old, new
 
@@ -199,14 +207,17 @@ def _big_old_and_pending_new(client, core):
 def test_control_new_approved_before_the_answer_leaves_old_out(sales):
     client, core, capture = sales
     old, new = _big_old_and_pending_new(client, core)
-    assert client.post(f"/api/governance/sources/{new}/approve", headers=SPACE, json={}).status_code == 200
+    assert decide(client, new, headers=SPACE).status_code == 200
     prompt = ask(client, capture, "What is the pallet weight limit per pallet?")
     assert "800 kg" in prompt and "500 kg" not in prompt
 
 
 def test_a_source_approved_mid_answer_answers_beside_the_source_it_replaces(sales):
     """P6/P1: the answer reads the register (new is pending, so old is not replaced), then new is approved before the
-    search; the index re-reads the register, admits new, and old and its replacement both reach one answer."""
+    search; the index re-reads the register, admits new, and old and its replacement both reach one answer.
+    Restated for the door (REF S23, the Human's decision after round 7): the approval is a job holding
+    the workspace's lock, as its request would; the ask passes the door and does not wait, so it still lands
+    mid-answer."""
     client, core, capture = sales
     old, new = _big_old_and_pending_new(client, core)
     svc = core.state.answer
@@ -214,7 +225,7 @@ def test_a_source_approved_mid_answer_answers_beside_the_source_it_replaces(sale
 
     def approval_lands_after_the_reading(records=None):
         out = real(records)
-        core.state.register.update(new, approval_status="approved")
+        as_job(core, core.state.register.update, new, approval_status="approved")
         return out
 
     svc._all_sections = approval_lands_after_the_reading
@@ -260,21 +271,25 @@ def test_control_expired_process_pending_at_the_reading_stays_out(sales):
 def test_control_expired_process_approved_before_the_answer_stays_out(sales):
     client, core, capture = sales
     svc, proc = _expired_pending_process(client, core)
-    core.state.register.update(proc, approval_status="approved")
+    with writing(core):  # set-up is a job (REF S23, the door)
+        core.state.register.update(proc, approval_status="approved")
     prompt = ask(client, capture, QUESTION)
     assert "] (structured facts) " not in prompt
 
 
 def test_an_expired_process_approved_mid_answer_reaches_it_through_the_process_registry(sales):
     """P6/P1/P5: the reading has the expired process pending, so nothing is scoped and the facts stay open; its approval
-    lands before the process registry is built, which re-reads the register and hands the expired process to the model."""
+    lands before the process registry is built, which re-reads the register and hands the expired process to the model.
+    Restated for the door (REF S23, the Human's decision after round 7): the approval is a job holding
+    the workspace's lock, as its request would; the ask passes the door and does not wait, so it still lands
+    mid-answer."""
     client, core, capture = sales
     svc, proc = _expired_pending_process(client, core)
     real = svc._all_sections
 
     def approval_lands_after_the_reading(records=None):
         out = real(records)
-        core.state.register.update(proc, approval_status="approved")
+        as_job(core, core.state.register.update, proc, approval_status="approved")
         return out
 
     svc._all_sections = approval_lands_after_the_reading
@@ -300,21 +315,25 @@ def _expired_pending_process_default_wiring(client, core):
 def test_control_expired_process_approved_before_the_answer_stays_out_of_the_facts_map(sales):
     client, core, capture = sales
     svc, proc = _expired_pending_process_default_wiring(client, core)
-    assert client.post(f"/api/governance/sources/{proc}/approve", headers=SPACE, json={}).status_code == 200
+    assert decide(client, proc, headers=SPACE).status_code == 200
     prompt = ask(client, capture, QUESTION)
     assert "Claims Handler" not in prompt
 
 
 def test_an_expired_process_approved_mid_answer_reaches_it_through_the_facts_map(sales):
     """P6/P1/P5, default wiring: the reading has the expired process pending, so the facts map stays open; the approval
-    action lands after the reading and rebuilds the facts map, whose facts from the expired source reach the model."""
+    action lands after the reading and rebuilds the facts map, whose facts from the expired source reach the model.
+    Restated for the door (REF S23, the Human's decision after round 7): the approval action is a job
+    holding the workspace's lock and names the text the approver read (S8); the ask passes the door and does not wait,
+    so it still lands mid-answer."""
     client, core, capture = sales
     svc, proc = _expired_pending_process_default_wiring(client, core)
     real = svc._all_sections
+    read = core.state.register.get(proc).content_sha256  # the text the approver read
 
     def approval_lands_after_the_reading(records=None):
         out = real(records)
-        core.state.content._approve(proc)  # the approval action, with its facts-map rebuild
+        as_job(core, core.state.content._approve, proc, read)  # the approval action, with its facts-map rebuild
         return out
 
     svc._all_sections = approval_lands_after_the_reading

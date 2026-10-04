@@ -24,6 +24,7 @@ from assistant.governance.intelligence import (
 )
 from assistant.iam.context import acting_id, acting_name
 from assistant.sources.register import ContentReplaced
+from assistant.storage import writes
 
 from . import claims
 
@@ -199,7 +200,9 @@ class GovernanceDesk:
         from .statement_governance import SalesStatementReview
         self.statements = SalesStatementReview(register, sections, knowledge)
         self.path = register.base_dir / 'governance-answers.json'
-        self.lock = threading.Lock()
+        # This desk's own lock, within one process; only writers take it, after the workspace's door (REF S23, S7).
+        self.lock = threading.RLock()
+        self.governed_by = None  # the workspace's lock its writes must hold, set by the workspace (REF S23, S7)
         self._texts = {}
         self._scan = (None, None)
 
@@ -277,6 +280,7 @@ class GovernanceDesk:
     def kept(self):
         return json.loads(self.kept_path.read_text()) if self.kept_path.exists() else []
 
+    @writes
     def keep(self, source_id, suggestion, note):
         """The issue stops being raised for this document: in its suggestions, on the Governance page and in Tibi."""
         at = datetime.now(timezone.utc).isoformat()
@@ -289,12 +293,14 @@ class GovernanceDesk:
             self._history({'kept_as_is': suggestion['key'], 'source_id': source_id, 'note': note or None,
                            'actor': acting_name(), 'actor_id': acting_id(), 'at': at})
 
+    @writes
     def unkeep(self, source_id, key):
         with self.lock:
             self._write(self.kept_path, [r for r in self.kept() if (r['source_id'], r['key']) != (source_id, key)])
             self._history({'kept_reopened': key, 'source_id': source_id, 'actor': acting_name(), 'actor_id': acting_id(),
                            'at': datetime.now(timezone.utc).isoformat()})
 
+    @writes
     def _history(self, entry):
         with (self.register.base_dir / 'sales-review-history.jsonl').open('a') as log:
             log.write(json.dumps(entry) + '\n')
@@ -564,11 +570,13 @@ class GovernanceDesk:
     def answers(self):
         return json.loads(self.path.read_text()) if self.path.exists() else []
 
+    @writes
     def _save(self, rows):
         temporary = self.path.with_suffix('.tmp')
         temporary.write_text(json.dumps(rows, indent=2) + '\n')
         temporary.replace(self.path)
 
+    @writes
     def propose(self, data):
         """Store the Human's confirmed answer as pending. A newer answer to the same issue replaces a pending one."""
         required = {'issue_key', 'contributor', 'session_id', 'answer', 'resolution'}
@@ -631,6 +639,7 @@ class GovernanceDesk:
                 changed.append(source.title if source else 'a deleted source')
         return changed
 
+    @writes
     def _close(self, row, rows):
         """Settle what an approved answer decides, then accept the issues it settles. An acronym issue listing several
         acronyms closes only when every one of them has an approved answer. The decision is applied to the records
@@ -659,6 +668,7 @@ class GovernanceDesk:
             if result.outcome != 'ok':
                 raise ValueError('Atlas could not record the resolution; the answer remains pending')
 
+    @writes
     def review(self, identifier, expected_hash, approve):
         """The Human's decision. Approval closes the issue in Governance through the platform action."""
         with self.lock:

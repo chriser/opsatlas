@@ -20,6 +20,7 @@ import pytest
 from iam_helpers import sign_in
 
 from assistant.api.access import manifest
+from tests.door_helpers import decide
 
 PLANTED = {
     "acme": ["ACMEVAULT-7F3A", "Acme Quartermaster", "lantern-heron-7f3a"],
@@ -120,7 +121,7 @@ def two_orgs(tmp_path, monkeypatch):
             assert up.status_code == 200, up.text
             sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
             client.post(f"/api/sources/{sid}/ingest", headers=head)
-            assert client.post(f"/api/governance/sources/{sid}/approve", headers=head).status_code == 200
+            assert decide(client, sid, headers=head).status_code == 200
             ids[org] = sid
         yield client, app, root, ids
 

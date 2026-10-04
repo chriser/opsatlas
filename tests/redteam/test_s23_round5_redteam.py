@@ -6,10 +6,11 @@ import hashlib
 import os
 import socket
 import threading
-from contextlib import contextmanager
+import time
 
 import pytest
 
+from tests.door_helpers import as_job, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -53,38 +54,39 @@ def _run(name, target, errors):
 def test_s23_round5_sales_review_and_dispute_settle_deadlock(sales, monkeypatch):
     """S7 (space lock always taken first; the space never stops accepting writes). The Sales review (`decide`) takes
     the space lock, then the Sales store's lock; `settle` (and `propose`, `resolve`) take the store's lock, then reach
-    the space lock through `_withdraw` -> reject_source -> `_set_status`. Two real requests at once deadlock."""
+    the space lock through `_withdraw` -> reject_source -> `_set_status`. Two real requests at once deadlock.
+    Restated for the door (REF S23, the Human's decision after round 7): the space lock is gone; the review and the
+    settle are each a job holding the workspace's one lock, as their requests would be, so while the review is paused
+    inside the Sales store's lock the settle waits at the workspace's lock (it never reaches the store's), and both
+    finish once the review is done."""
     knowledge, family = sales.state.sales, sales.state.family_register
     rows = [r for r in knowledge.records()
             if family.get(r["source_id"]) is not None and family.get(r["source_id"]).approval_status != "rejected"]
     assert len(rows) >= 2, "the seeded Sales records are needed"
     target, other = rows[0], rows[1]
 
-    review_has_space_lock, settle_has_store_lock = threading.Event(), threading.Event()
-    original_space_lock, original_records = family.space_lock, knowledge.records
+    review_has_store_lock, settle_has_store_lock, release = threading.Event(), threading.Event(), threading.Event()
+    original_records = knowledge.records
 
-    @contextmanager
-    def space_lock(source_id):  # widens the window only: the order of locks is the code's own
-        with original_space_lock(source_id):
-            if threading.current_thread().name == "review":
-                review_has_space_lock.set()
-                settle_has_store_lock.wait(JOIN)
-            yield
-
-    def records():
+    def records():  # widens the window only: called inside `with self.lock`
         rows_now = original_records()
-        if threading.current_thread().name == "settle":  # called inside `with self.lock`
+        if threading.current_thread().name == "review" and not review_has_store_lock.is_set():
+            review_has_store_lock.set()
+            release.wait(JOIN)
+        if threading.current_thread().name == "settle":
             settle_has_store_lock.set()
         return rows_now
 
-    monkeypatch.setattr(family, "space_lock", space_lock)
     monkeypatch.setattr(knowledge, "records", records)
     errors: dict = {}
-    review = _run("review", lambda: knowledge.decide(target["id"], target["sha256"], True), errors)
-    assert review_has_space_lock.wait(JOIN)
-    settle = _run("settle", lambda: knowledge.settle(
+    review = _run("review", lambda: as_job(sales, knowledge.decide, target["id"], target["sha256"], True), errors)
+    assert review_has_store_lock.wait(JOIN)
+    settle = _run("settle", lambda: as_job(sales, knowledge.settle,
         [{"source_id": target["source_id"]}, {"source_id": other["source_id"]}], {"decision": "dispute"},
         "red team"), errors)
+    time.sleep(0.3)
+    assert not settle_has_store_lock.is_set(), "the settle reached the Sales store while the review held the lock"
+    release.set()
     review.join(JOIN)
     settle.join(JOIN)
     assert not review.is_alive() and not settle.is_alive(), (
@@ -104,7 +106,9 @@ def _where(thread) -> list[str]:
 
 def test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails(sales, monkeypatch):
     """S5 and S3. The publish_version action's audit write (`action_log.append`) runs after its handler committed the
-    swap; when that write failed, the publish raised, yet the new version was live and approved."""
+    swap; when that write failed, the publish raised, yet the new version was live and approved. Restated for the
+    door (REF S23, the Human's decision after round 7): the direct set-up writes and the publish are jobs holding the
+    workspace's lock, as a request would."""
     from fastapi.testclient import TestClient
 
     from assistant.ingestion.service import ingest_source
@@ -118,11 +122,12 @@ def test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails(sale
         assert up.status_code == 200, up.text
         sid = up.json()["id"]
         register, sections, content = core.state.register, core.state.section_store, core.state.content
-        ingest_source(register, sections, sid)
-        register.update(sid, approval_status="approved")
         new_text = "# Policy\n\nVersion two text, not live until published.\n"
-        content.save_draft(sid, new_text)
-        content.submit(sid)
+        with writing(core):
+            ingest_source(register, sections, sid)
+            register.update(sid, approval_status="approved")
+            content.save_draft(sid, new_text)
+            content.submit(sid)
         before = register.get(sid)
 
         log = core.state.actions.action_log
@@ -135,7 +140,7 @@ def test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails(sale
 
         monkeypatch.setattr(log, "append", append)
         try:
-            content.publish(sid, _sha(new_text))
+            as_job(core, content.publish, sid, _sha(new_text))
             raised = None
         except Exception as exc:  # noqa: BLE001
             raised = exc

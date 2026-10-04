@@ -360,7 +360,7 @@ def test_approval_gate_controls_queryability(tmp_path):
     assert client.post("/api/query", json={"q": "credit checks"}).json()["mode"] == "empty"
 
     # Approve -> queryable.
-    approved = client.post(f"/api/governance/sources/{rec['id']}/approve").json()
+    approved = client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]}).json()
     assert approved["approval_status"] == "approved"
     assert client.post("/api/query", json={"q": "credit checks"}).json()["results"]
     audit = client.get("/api/ontology/actions/log").json()["executions"][0]
@@ -377,7 +377,7 @@ def test_reject_source_records_action_log(tmp_path):
         data={"title": "Draft"},
     ).json()
 
-    rejected = client.post(f"/api/governance/sources/{rec['id']}/reject").json()
+    rejected = client.post(f"/api/governance/sources/{rec['id']}/reject", json={"sha": rec["content_sha256"]}).json()
 
     assert rejected["approval_status"] == "rejected"
     audit = client.get("/api/ontology/actions/log").json()["executions"][0]
@@ -388,7 +388,7 @@ def test_reject_source_records_action_log(tmp_path):
 
 def test_reject_missing_source_404(tmp_path):
     client = make_client(tmp_path)
-    assert client.post("/api/governance/sources/nope/reject").status_code == 404
+    assert client.post("/api/governance/sources/nope/reject", json={"sha": "0" * 64}).status_code == 404
     audit = client.get("/api/ontology/actions/log").json()["executions"][0]
     assert audit["action"] == "reject_source"
     assert audit["outcome"] == "rejected"
@@ -409,7 +409,7 @@ def test_document_get_and_save_goes_through_drafts_and_approval(tmp_path):
         data={"title": "Doc"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
 
     doc = client.get(f"/api/governance/sources/{rec['id']}/document").json()
     assert doc["title"] == "Doc" and "first section" in doc["text"]
@@ -522,7 +522,7 @@ def test_reanalysis_records_external_coverage_and_pending_changes(tmp_path):
         data={"title": "Tax controls"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
     public = client.app.state.public_content
     external_source = public.upsert_source(provider="govuk", url="https://www.gov.uk/vat-businesses", topics=["tax"])
     public.add_snapshot(

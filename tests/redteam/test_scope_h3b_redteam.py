@@ -7,6 +7,7 @@ import socket
 
 import pytest
 
+from tests.door_helpers import as_job, decide, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -47,9 +48,10 @@ def env(tmp_path, monkeypatch):
             sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
             client.post(f"/api/sources/{sid}/ingest", headers=HEAD)
             if approve:
-                assert client.post(f"/api/governance/sources/{sid}/approve", headers=HEAD).status_code == 200
+                assert decide(client, sid, headers=HEAD).status_code == 200
             if scope:
-                core.state.register.update(sid, **scope)
+                with writing(core):  # set-up is a job (REF S23, the door)
+                    core.state.register.update(sid, **scope)
             return sid
 
         def ask(q: str) -> dict:
@@ -69,7 +71,8 @@ def scope_on():
 def test_scope_edit_after_index_built_still_leaks_through_retrieval(env):
     """Promise 1, retrieval path: a source's effective_to edited into the past after a first question. The index
     snapshot's fingerprint (id, version, sha, section count) ignores scope fields, so search's allow() reads the stale
-    record and the out-of-force passage still answers."""
+    record and the out-of-force passage still answers. Restated for the door (REF S23, the Human's decision after
+    round 7): the edit is a job holding the workspace's lock, as the details request would."""
     client, core, add, ask = env
     add("lighting.md", FILLER)
     policy = add("refunds.md", "# Refund policy\n\nThe refund window for returns is ZORBLAX fourteen days.\n")
@@ -78,7 +81,8 @@ def test_scope_edit_after_index_built_still_leaks_through_retrieval(env):
     assert first["mode"] == "retrieval"
     assert "ZORBLAX" in first["answer"]  # in force: it answers (and the index snapshot is built)
 
-    core.state.register.update(policy, effective_to="2025-12-31")  # no longer in force today
+    with writing(core):
+        core.state.register.update(policy, effective_to="2025-12-31")  # no longer in force today
     second = ask("What is the refund window for returns?")
     assert "ZORBLAX" not in second["answer"], "an out-of-force source answered through retrieval"
     assert all(c["source_id"] != policy for c in second["citations"])
@@ -101,27 +105,31 @@ def test_scope_edit_via_details_api_still_leaks_through_retrieval(env):
 def test_site_edit_after_index_built_still_leaks_through_retrieval(env):
     """Promise 2, site: a guide edited to apply to Bristol only after a first question. Restated after the second stop
     rule (no site guessing): the guide still answers, and its passage says Bristol, read from the register as it is now,
-    not from the search index's copy (which still has no site)."""
+    not from the search index's copy (which still has no site). Restated for the door (REF S23, the Human's decision
+    after round 7): the edit is a job holding the workspace's lock, as the details request would."""
     client, core, add, ask = env
     add("lighting.md", FILLER)
     add("leeds.md", "# Leeds note\n\nLeeds yard gates open at six.\n", applies_to=["Leeds"])
     guide = add("refunds.md", "# Refund policy\n\nThe refund window for returns is QUOKKA ten days.\n")
     scope_on()
     assert "QUOKKA" in ask("What is the refund window for returns at Leeds?")["answer"]
-    core.state.register.update(guide, applies_to=["Bristol"])
+    with writing(core):
+        core.state.register.update(guide, applies_to=["Bristol"])
     answer = ask("What is the refund window for returns at Leeds?")["answer"]
     assert "(Applies to: Bristol.) " in answer and "QUOKKA" in answer, "the site edit did not reach the passage's label"
 
 
 def test_control_rebuilt_index_keeps_out_of_force_source(env):
     """Control for break 1 (passes now): the same edit followed by an index rebuild keeps the source out, so the leak
-    is the stale snapshot, not the filter's date logic."""
+    is the stale snapshot, not the filter's date logic. Restated for the door (REF S23, the Human's decision after
+    round 7): the edit is a job holding the workspace's lock, as the details request would."""
     client, core, add, ask = env
     add("lighting.md", FILLER)
     policy = add("refunds.md", "# Refund policy\n\nThe refund window for returns is ZORBLAX fourteen days.\n")
     scope_on()
     assert "ZORBLAX" in ask("What is the refund window for returns?")["answer"]
-    core.state.register.update(policy, effective_to="2025-12-31")
+    with writing(core):
+        core.state.register.update(policy, effective_to="2025-12-31")
     core.state.answer.retrieval.index.invalidate()
     assert "ZORBLAX" not in ask("What is the refund window for returns?")["answer"]
 
@@ -131,7 +139,9 @@ def test_control_rebuilt_index_keeps_out_of_force_source(env):
 def test_supersede_approved_mid_answer_lets_replaced_source_answer(env, monkeypatch):
     """Promise 1, replaced, two requests at once: the replacing source is approved after ScopeFilter is built. Restated
     after round 3 (the Human's decision: one reading per answer, no mid-answer recheck): this answer is judged on the
-    reading taken as it began, so the 2025 policy answers once; the next answer has only the 2026 policy."""
+    reading taken as it began, so the 2025 policy answers once; the next answer has only the 2026 policy. Restated for
+    the door (REF S23, the Human's decision after round 7): the approval is a job holding the workspace's lock, as its
+    request would; the ask passes the door and does not wait, so the approval still lands mid-answer."""
     import assistant.answer.service as service
     client, core, add, ask = env
     old = add("old.md", "# Refund policy 2025\n\nThe refund window for returns is OLDWINDOW thirty days.\n")
@@ -142,7 +152,7 @@ def test_supersede_approved_mid_answer_lets_replaced_source_answer(env, monkeypa
     class Racing(service.ScopeFilter):
         def __init__(self, *a, **k):
             super().__init__(*a, **k)
-            core.state.register.update(new, approval_status="approved")  # the approval lands now
+            as_job(core, core.state.register.update, new, approval_status="approved")  # the approval lands now
 
     monkeypatch.setattr(service, "ScopeFilter", Racing)
     answer = ask("What is the refund window for returns?")

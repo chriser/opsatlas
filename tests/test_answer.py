@@ -92,7 +92,7 @@ def seed(client) -> None:
         data={"title": "Supplier setup"},
     ).json()
     client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
 
 
 def seed_structured(client, *, ingest: bool = False) -> None:
@@ -103,7 +103,7 @@ def seed_structured(client, *, ingest: bool = False) -> None:
     ).json()
     if ingest:
         client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
 
 
 def seed_article_structured(client, *, ingest: bool = False) -> None:
@@ -114,7 +114,7 @@ def seed_article_structured(client, *, ingest: bool = False) -> None:
     ).json()
     if ingest:
         client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
 
 
 def test_ask_requires_auth(tmp_path):

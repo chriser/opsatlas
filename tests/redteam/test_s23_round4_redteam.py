@@ -17,6 +17,7 @@ from assistant.ingestion.store import SectionStore
 from assistant.retrieval.index import CorpusIndex
 from assistant.sources.models import SourceRecord
 from assistant.sources.register import SourceRegister
+from tests.door_helpers import as_job
 
 V1 = "# Refund policy\n\nRefunds are paid within thirty days of the request.\n"
 V2 = "# Refund policy\n\nRefunds are paid within fourteen days of the request.\n"
@@ -130,22 +131,30 @@ def test_s23_round4_publish_and_new_upload_at_once_deadlock(tmp_path):
 # ---------------------------------------------------------------------------------------------------------------------
 
 def test_s23_round4_rename_reapproves_a_document_rejected_meanwhile(tmp_path):
+    """Restated for the door (REF S23, the Human's decision after round 7): the rename and the rejection are each a job
+    holding the door's lock, as their requests would be (no service lock remains). While the rename is paused preparing
+    its text, the rejection waits at the lock; once the rename is done, the rejection meets the new version and is
+    refused, so it can never be accepted and then overwritten by the rename's approval."""
     register, sections, svc = build(tmp_path)
     svc.document("doc1")
     published = svc.published_text(register.get("doc1"))
+    preparing, go = threading.Event(), threading.Event()
 
     def retitle(source, title):  # the workspace's retitle hook (a record's title is its first heading)
         if threading.current_thread().name == "renamer":
-            deadline = time.monotonic() + 3
-            while time.monotonic() < deadline and register.get("doc1").approval_status != "rejected":
-                time.sleep(0.01)  # the reviewer's rejection lands while the rename is preparing its text
+            preparing.set()  # the reviewer's rejection arrives while the rename is preparing its text
+            go.wait(8)
         return source and V1.replace("# Refund policy", f"# {title}")
 
     svc.hooks["retitle"] = retitle
     results: dict = {}
-    renamer = run("renamer", lambda: svc.rename("doc1", "Refunds"), results)
-    time.sleep(0.05)
-    reviewer = run("reviewer", lambda: svc.decide("doc1", sha(published), approve=False), results)
+    renamer = run("renamer", lambda: as_job(svc, svc.rename, "doc1", "Refunds"), results)
+    assert preparing.wait(8)
+    reviewer = run("reviewer", lambda: as_job(svc, svc.decide, "doc1", sha(published), approve=False), results)
+    time.sleep(0.3)
+    assert "reviewer" not in results and register.get("doc1").approval_status == "approved", \
+        "the rejection went in while the rename held the lock"
+    go.set()
     renamer.join(8)
     reviewer.join(8)
     assert results["renamer"][0] == "ok", results["renamer"]

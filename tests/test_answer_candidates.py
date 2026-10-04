@@ -5,6 +5,7 @@ from datetime import date
 from types import SimpleNamespace
 
 from assistant.answer.scope import UNREADABLE, ScopeFilter, parts, read_date
+from tests.door_helpers import decide
 
 
 def source(sid, **scope):
@@ -74,7 +75,7 @@ def test_an_unsupported_answer_is_withheld_only_when_the_candidate_is_on(tmp_pat
                                                                  "text/markdown")}, headers=head).json()
         sid = up["id"] if "id" in up else up["source"]["id"]
         client.post(f"/api/sources/{sid}/ingest", headers=head)
-        client.post(f"/api/governance/sources/{sid}/approve", headers=head)
+        decide(client, sid, headers=head)
         shown = client.post("/api/ask", json={"q": "Who approves refunds?"}, headers=head).json()
         assert not shown["refused"] and shown["grounding"] == "unsupported"
         os.environ["KP_WITHHOLD_UNSUPPORTED"] = "1"

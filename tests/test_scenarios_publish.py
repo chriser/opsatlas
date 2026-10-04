@@ -7,15 +7,19 @@ Promises, checked against a model of the live version kept beside the real store
   whole: its text, passages, version and approval;
 - S4: a version number is given only to a version that went live, and names one text;
 - S5: after a publish the facts map is in step with the register and holds no fact from a text that is not live;
-- two publishes at once, or a publish with a details edit, are applied one after the other.
+- two publishes at once, or a publish with a details edit, are applied one after the other;
+- S7 (the door, the Human's decision after round 7): a write without the workspace's lock is refused and changes
+  nothing; a reader during a write never waits;
+- S8: an approval names the text it approves; an approval of a version superseded since it was read is refused.
 
 Scenario kinds: publishes that succeed; a text that cannot be split; a publish failing at staging the text or the
 passages, or at the record's write (the commit); an answer (scope on or off) or a facts-map rebuild landing inside the
 swap, before the record is written; a committed version whose move into place fails (readers move it) or never runs
 (a crash: the next writer settles it); an earlier text published again (a restore); a history entry written but
 reported failed; the event store down;
-two publishes at once; a details edit during a publish. The red teams' findings of 3 October 2026 (REF H3b, rounds 5
-and 6) are kinds here.
+two publishes at once; a details edit during a publish; a reader during a publish; a write without the lock; an
+approval of a version superseded since it was read. The red teams' findings (REF H3b rounds 5 and 6; REF S23 rounds 1
+to 7) are kinds here. A publish here is a job: it holds the workspace's lock, as a request does.
 """
 import hashlib
 import os
@@ -28,6 +32,9 @@ from fastapi.testclient import TestClient
 from iam_helpers import sign_in
 from scenarios import explore
 from test_space_leaks import hermetic, refuse
+
+from assistant.storage import NotHolding
+from tests.door_helpers import as_job, decide, writing
 
 HEAD = {"X-OpsAtlas-Space": "acme"}
 
@@ -62,7 +69,7 @@ def desk(tmp_path, monkeypatch):
                          headers=HEAD)
         sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
         assert client.post(f"/api/sources/{sid}/ingest", headers=HEAD).status_code == 200
-        assert client.post(f"/api/governance/sources/{sid}/approve", headers=HEAD).status_code == 200
+        assert decide(client, sid, headers=HEAD).status_code == 200
         core.state.answer.generator = Echo()
         yield client, core, sid
 
@@ -100,9 +107,9 @@ def one_run(run, client, core, sid, live):
         if live["in_step"]:
             run.promise("the facts map is in step after a publish", core.state.answer._facts_in_step(approved), where)
 
-    def publish(text: bytes) -> bool:
+    def publish(text: bytes, approve: bool = True) -> bool:
         try:
-            content._write_version(register.get(sid), text, approve=True)
+            as_job(core, lambda: content._write_version(register.get(sid), text, approve=approve))
             return True
         except Exception:
             return False
@@ -112,7 +119,8 @@ def one_run(run, client, core, sid, live):
         text = process_text(marker)
         kind = run.rng.choice(["publish", "publish", "unreadable", "fail-text", "fail-passages", "fail-record",
                                "reader-inside", "rebuild-inside", "two-at-once", "edit-during", "move-fails",
-                               "crash-after-commit", "restore", "history-lands-then-fails", "events-down"])
+                               "crash-after-commit", "restore", "history-lands-then-fails", "events-down",
+                               "read-while-writing", "write-without-lock", "approve-superseded"])
         run.step(kind, marker)
         if kind == "publish":
             ok = publish(text)
@@ -163,6 +171,59 @@ def one_run(run, client, core, sid, live):
                 if content.events is not None:
                     content.events.record = real_record
             run.promise("a publish is not failed by its events", ok, marker)
+        elif kind == "read-while-writing":  # red team, S23 round 7: a reader never waits for a writer
+            paused, go = threading.Event(), threading.Event()
+            real_stage = register.stage_content
+
+            def stage_and_pause(source_id, data):
+                real_stage(source_id, data)
+                if data == text:
+                    paused.set()
+                    go.wait(10)
+            register.stage_content = stage_and_pause
+            outcome = {}
+            writer = threading.Thread(target=lambda: outcome.__setitem__("ok", publish(text)), daemon=True)
+            writer.start()
+            try:
+                run.promise("the writer reached its pause", paused.wait(10), marker)
+                done = threading.Event()
+
+                def read():
+                    client.get(f"/api/content/documents/{sid}", headers=HEAD)
+                    client.get("/api/content/documents", headers=HEAD)
+                    done.set()
+                threading.Thread(target=read, daemon=True).start()
+                run.promise("a reader during a write never waits", done.wait(5), marker)
+            finally:
+                go.set()
+                writer.join(15)
+                register.stage_content = real_stage
+            ok = outcome.get("ok", False)
+            run.promise("a readable publish succeeds", ok, marker)
+        elif kind == "write-without-lock":  # S7: the stores check the lock, whatever writes
+            before = register.get(sid)
+            refused = []
+            for write in (lambda: register.update(sid, title="Not through the door"),
+                          lambda: content.store.log(sid, "someone", "edited"),
+                          lambda: store.replace_for_source(sid, [], sha=None)):
+                try:
+                    write()
+                except NotHolding:
+                    refused.append(True)
+            run.promise("a write without the lock is refused", len(refused) == 3, marker)
+            run.promise("and changes nothing", register.get(sid) == before, marker)
+            check(kind)
+            continue
+        elif kind == "approve-superseded":  # S8: the version read is superseded before the approval lands
+            read = register.get(sid).content_sha256
+            ok = publish(text, approve=False)
+            run.promise("an unapproved version is written", ok, marker)
+            stale = client.post(f"/api/governance/sources/{sid}/approve", json={"sha": read}, headers=HEAD)
+            run.promise("an approval of the superseded version is refused", stale.status_code == 409, str(stale.status_code))
+            run.promise("and the new version stays unapproved", register.get(sid).approval_status != "approved", marker)
+            named = client.post(f"/api/governance/sources/{sid}/approve", json={"sha": register.get(sid).content_sha256},
+                                headers=HEAD)
+            run.promise("an approval naming the current text is applied", named.status_code == 200, named.text[:200])
         elif kind == "unreadable":
             ok = publish(b"   \n")
             run.promise("an unreadable text is refused", not ok, marker)
@@ -233,7 +294,8 @@ def one_run(run, client, core, sid, live):
                 register.stage_content = real_stage
             edit.join(10)
             run.promise("the edit is applied after the publish", register.get(sid).effective_to == day, "")
-            core.state.register.update(sid, effective_to=None)
+            with writing(core):
+                core.state.register.update(sid, effective_to=None)
         if ok:
             live["dead"].append(live["marker"])
             live.update(version=live["version"] + 1, text=text, sha=register.get(sid).content_sha256, marker=marker,

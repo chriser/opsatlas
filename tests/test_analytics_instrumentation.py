@@ -9,6 +9,7 @@ from assistant.api.auth import AuthService
 from assistant.ingestion.store import SectionStore
 from assistant.retrieval.service import RetrievalService
 from assistant.sources.register import SourceRegister
+from tests.door_helpers import decide
 
 PASSWORD = "test-pass"
 
@@ -38,7 +39,7 @@ def test_source_and_governance_lifecycle_events_are_recorded(tmp_path):
     ).json()
 
     client.post(f"/api/sources/{uploaded['id']}/ingest")
-    client.post(f"/api/governance/sources/{uploaded['id']}/approve")
+    client.post(f"/api/governance/sources/{uploaded['id']}/approve", json={"sha": uploaded["content_sha256"]})
     draft = client.put(f"/api/content/documents/{uploaded['id']}/draft",
                        json={"text": "# Controls\n\nCredit checks are mandatory for every supplier."}).json()
     client.post(f"/api/content/documents/{uploaded['id']}/submit", json={})
@@ -47,7 +48,7 @@ def test_source_and_governance_lifecycle_events_are_recorded(tmp_path):
         "/api/governance/issues/accept",
         json={"source_id": uploaded["id"], "check": "content_style", "detail": "raw issue detail should stay out of events"},
     )
-    client.post(f"/api/governance/sources/{uploaded['id']}/reject")
+    decide(client, uploaded["id"], verb="reject")  # names the text now live, after the publish (REF S23, S8)
     client.delete(f"/api/sources/{uploaded['id']}")
 
     event_types = [event.event_type for event in events.events()]
@@ -78,7 +79,7 @@ def test_ask_events_capture_outcomes_without_raw_questions_or_answers(tmp_path):
         data={"title": "Supplier controls"},
     ).json()
     client.post(f"/api/sources/{uploaded['id']}/ingest")
-    client.post(f"/api/governance/sources/{uploaded['id']}/approve")
+    client.post(f"/api/governance/sources/{uploaded['id']}/approve", json={"sha": uploaded["content_sha256"]})
     client.post("/api/ask", json={"q": "Are credit checks mandatory?"})
 
     ask_events = [event for event in events.events() if event.event_type.startswith("ask_")]

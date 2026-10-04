@@ -14,6 +14,7 @@ import time
 
 import pytest
 
+from tests.door_helpers import as_job, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -62,7 +63,10 @@ def _wait_until_busy(lock_base, seconds: float = 5.0) -> bool:
 def test_s23_round6_accept_suggestion_against_publish_deadlocks_the_workspace(sales):
     """S7: "no other lock is ever taken before it". Accepting a governance suggestion takes the content store's lock
     and then (through the desk's keep) the workspace lock; a publish takes the workspace lock and then the content
-    store's lock. One accept and one publish at once, in the same space, wait on each other for ever."""
+    store's lock. One accept and one publish at once, in the same space, wait on each other for ever. Restated for the
+    door (REF S23, the Human's decision after round 7): the accept and the publish are each a job holding the
+    workspace's one lock, as their requests would be, so while the accept is paused inside it the publish waits at the
+    lock (no other lock is taken first), and both finish once the accept is done."""
     app, root = sales
     content, desk = app.state.content, app.state.governance_desk
     notes = content.suggestion_overview()["notes"]
@@ -70,14 +74,16 @@ def test_s23_round6_accept_suggestion_against_publish_deadlocks_the_workspace(sa
     suggested = next(iter(notes))
     key = content.suggestions(suggested)[0]["key"]
     other = next(s.id for s in content.register.list() if s.id != suggested and content.editable(s))
-    _, draft_sha = _submitted_draft(content, other, "A line the approver read.")
+    with writing(app):
+        _, draft_sha = _submitted_draft(content, other, "A line the approver read.")
+    before = content.register.get(other)
 
-    accept_holds_store_lock, publish_holds_workspace = threading.Event(), threading.Event()
+    accept_holds_lock, release = threading.Event(), threading.Event()
     keep = desk.keep
 
-    def keep_after_publish_started(*args, **kwargs):  # only widens the real window between the two locks
-        accept_holds_store_lock.set()
-        publish_holds_workspace.wait(5)
+    def keep_after_publish_started(*args, **kwargs):  # only widens the real window inside the accept
+        accept_holds_lock.set()
+        release.wait(5)
         return keep(*args, **kwargs)
 
     desk.keep = keep_after_publish_started
@@ -85,15 +91,15 @@ def test_s23_round6_accept_suggestion_against_publish_deadlocks_the_workspace(sa
 
     def accept():
         try:
-            content.accept_suggestion(suggested, key, "kept as it is")
+            as_job(app, content.accept_suggestion, suggested, key, "kept as it is")
             outcome["accept"] = "ok"
         except Exception as exc:  # noqa: BLE001
             outcome["accept"] = repr(exc)
 
     def publish():
-        accept_holds_store_lock.wait(5)
+        accept_holds_lock.wait(5)
         try:
-            content.publish(other, draft_sha)
+            as_job(app, content.publish, other, draft_sha)
             outcome["publish"] = "ok"
         except Exception as exc:  # noqa: BLE001
             outcome["publish"] = repr(exc)
@@ -102,9 +108,12 @@ def test_s23_round6_accept_suggestion_against_publish_deadlocks_the_workspace(sa
     b = threading.Thread(target=publish, daemon=True)
     a.start()
     b.start()
-    assert accept_holds_store_lock.wait(5)
-    assert _wait_until_busy(root / "workspace"), "the publish took the workspace lock"
-    publish_holds_workspace.set()
+    assert accept_holds_lock.wait(5)
+    assert _wait_until_busy(root / "workspace"), "the accept holds the workspace lock"
+    time.sleep(0.3)
+    assert "publish" not in outcome and content.register.get(other).version == before.version, \
+        "the publish went in while the accept held the workspace lock"
+    release.set()
     a.join(timeout=8)
     b.join(timeout=8)
     import sys
@@ -120,7 +129,9 @@ def test_s23_round6_accept_suggestion_against_publish_deadlocks_the_workspace(sa
 def test_s23_round6_record_reader_during_commit_gets_the_previous_versions_text(sales):
     """S2: "views and readers that pair a record with its text read them together". Between the record's write (the
     commit) and the move into place, a reader that tries the busy lock falls back to the live file: it is handed the
-    new record (new SHA, new version) with the previous version's text, by the register and by the Sales source route."""
+    new record (new SHA, new version) with the previous version's text, by the register and by the Sales source route.
+    Restated for the door (REF S23, the Human's decision after round 7): the draft's set-up and the publish are jobs
+    holding the workspace's lock; the readers hold none and never wait."""
     from fastapi.testclient import TestClient
     app, root = sales
     content = app.state.content
@@ -128,7 +139,8 @@ def test_s23_round6_record_reader_during_commit_gets_the_previous_versions_text(
     target = next(s.id for s in content.register.list() if content.editable(s))
     before = content.register.get(target)
     old_text = content.register.read_content(target)
-    new_text, draft_sha = _submitted_draft(content, target, "Version two: the approved wording.")
+    with writing(app):
+        new_text, draft_sha = _submitted_draft(content, target, "Version two: the approved wording.")
 
     committed, release = threading.Event(), threading.Event()
     commit_version = content.store.commit_version
@@ -143,7 +155,7 @@ def test_s23_round6_record_reader_during_commit_gets_the_previous_versions_text(
 
     def publish():
         try:
-            outcome["publish"] = content.publish(target, draft_sha)["version"]
+            outcome["publish"] = as_job(app, content.publish, target, draft_sha)["version"]
         except Exception as exc:  # noqa: BLE001
             outcome["publish"] = repr(exc)
 

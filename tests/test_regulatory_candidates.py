@@ -176,7 +176,7 @@ def test_regulatory_candidates_api_and_review_flow(tmp_path):
         data={"title": "Site ops pack"},
     ).json()
     client.post(f"/api/sources/{source['id']}/ingest")
-    client.post(f"/api/governance/sources/{source['id']}/approve")
+    client.post(f"/api/governance/sources/{source['id']}/approve", json={"sha": source["content_sha256"]})
 
     report = client.get("/api/regulatory/candidates").json()
     candidate_id = report["candidates"][0]["id"]

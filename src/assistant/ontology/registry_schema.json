@@ -200,11 +200,12 @@
     {
       "api_name": "approve_source",
       "display_name": "Approve Source",
-      "description": "Approve a registered knowledge source for retrieval, process extraction and ontology use.",
+      "description": "Approve a registered knowledge source for retrieval, process extraction and ontology use. The approval names the text it approves (its SHA-256); any other text is refused (REF S23, S8).",
       "parameters": [
-        { "name": "source_id", "type": "string" }
+        { "name": "source_id", "type": "string" },
+        { "name": "sha", "type": "string" }
       ],
-      "validation_rules": ["auth_required", "source_exists", "not_already_approved"],
+      "validation_rules": ["auth_required", "source_exists", "names_current_text", "not_already_approved"],
       "edit_kind": "update",
       "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
       "requires_human_approval": true,
@@ -213,11 +214,12 @@
     {
       "api_name": "reject_source",
       "display_name": "Reject Source",
-      "description": "Reject a registered knowledge source so it is excluded from approved retrieval and process extraction.",
+      "description": "Reject a registered knowledge source so it is excluded from approved retrieval and process extraction. A person's rejection names the text rejected (its SHA-256); a withdrawal by the workspace names none, so it always succeeds (REF S23, S8).",
       "parameters": [
-        { "name": "source_id", "type": "string" }
+        { "name": "source_id", "type": "string" },
+        { "name": "sha", "type": "string", "required": false }
       ],
-      "validation_rules": ["auth_required", "source_exists", "not_already_rejected"],
+      "validation_rules": ["auth_required", "source_exists", "names_current_text", "not_already_rejected"],
       "edit_kind": "update",
       "side_effects": ["refresh_process_registry", "rebuild_ontology", "record_analytics_event"],
       "requires_human_approval": true,

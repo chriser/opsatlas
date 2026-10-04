@@ -12,6 +12,7 @@ from iam_helpers import sign_in
 from test_space_leaks import hermetic, refuse
 
 from assistant.sources.register import ContentReplaced
+from tests.door_helpers import as_job, decide, writing
 
 HEAD = {"X-OpsAtlas-Space": "acme"}
 V1 = b"# Purchase orders\n\nThe procurement manager approves every purchase order.\n"
@@ -35,7 +36,7 @@ def acme(tmp_path, monkeypatch):
         up = client.post("/api/sources/upload", files={"file": ("po.md", V1, "text/markdown")}, headers=HEAD)
         sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
         assert client.post(f"/api/sources/{sid}/ingest", headers=HEAD).status_code == 200
-        assert client.post(f"/api/governance/sources/{sid}/approve", headers=HEAD).status_code == 200
+        assert decide(client, sid, headers=HEAD).status_code == 200
         yield core, sid
 
 
@@ -59,7 +60,7 @@ def test_the_live_version_stands_until_the_record_is_written(acme):
         seen.append((record.version, record.approval_status, text == V1, "procurement manager" in passages))
     store.stage_for_source = stage
     try:
-        core.state.content._write_version(register.get(sid), V2, approve=True)
+        as_job(core, core.state.content._write_version, register.get(sid), V2, approve=True)
     finally:
         store.stage_for_source = real_stage
     assert seen == [(1, "approved", True, True)], seen  # a reader holding version 1 still takes version 1, whole
@@ -82,7 +83,7 @@ def test_a_failed_swap_leaves_the_live_version_whole(acme):
     register.update = commit_fails_once
     try:
         with pytest.raises(ContentError):
-            core.state.content._write_version(register.get(sid), V2, approve=True)
+            as_job(core, core.state.content._write_version, register.get(sid), V2, approve=True)
     finally:
         register.update = real_update
     record = register.get(sid)
@@ -97,7 +98,7 @@ def test_a_text_that_cannot_be_split_fails_before_anything_live_is_touched(acme)
     core, sid = acme
     register = core.state.register
     with pytest.raises(ContentError):
-        core.state.content._write_version(register.get(sid), b"   \n", approve=True)
+        as_job(core, core.state.content._write_version, register.get(sid), b"   \n", approve=True)
     record = register.get(sid)
     assert (record.version, record.approval_status) == (1, "approved") and register.read_content(sid) == V1
     assert "procurement manager" in _texts(core, sid, record)
@@ -115,7 +116,7 @@ def test_a_rebuild_failing_after_the_swap_still_publishes(acme):
         return real()
     content.rebuild_facts = fails_once
     try:
-        record = content._write_version(register.get(sid), V2, approve=True)
+        record = as_job(core, content._write_version, register.get(sid), V2, approve=True)
     finally:
         content.rebuild_facts = real
     assert (record.version, record.approval_status) == (2, "approved")  # published, not reported as failed
@@ -134,7 +135,7 @@ def test_a_search_while_a_committed_version_cannot_be_moved_does_not_lose_the_do
     store.promote_for_source = lambda source_id: (_ for _ in ()).throw(OSError("busy"))
     store.READ_STAGED = False  # and the staged passages cannot be read where they are either (a second fault)
     try:
-        core.state.content._write_version(register.get(sid), V2, approve=True)  # committed; the move failed
+        as_job(core, core.state.content._write_version, register.get(sid), V2, approve=True)  # committed; the move failed
         assert not [s for r, s in index.current().items if r.id == sid]  # no passages for version 2 yet
     finally:
         store.promote_for_source = real_promote
@@ -149,7 +150,7 @@ def test_a_reader_holding_the_previous_record_gets_none_of_the_new_text(acme):
     core, sid = acme
     register, store = core.state.register, core.state.section_store
     held = register.get(sid)
-    core.state.content._write_version(held, V2, approve=True)
+    as_job(core, core.state.content._write_version, held, V2, approve=True)
     with pytest.raises(ContentReplaced):
         register.read_content(sid, sha=held.content_sha256)
     assert store.list_for_source(sid, sha=held.content_sha256) == []
@@ -162,9 +163,10 @@ def test_passages_stored_before_fingerprints_are_stamped_at_start_up(acme):
     core, sid = acme
     register, store = core.state.register, core.state.section_store
     record = register.get(sid)
-    store.replace_for_source(sid, store.list_for_source(sid))  # as written before S23: no fingerprint
-    assert store.fingerprint(sid) is None
-    assert stamp_unfingerprinted(register, store) >= 1
+    with writing(core):  # start-up is a job, holding the workspace's lock (REF S23, S7)
+        store.replace_for_source(sid, store.list_for_source(sid))  # as written before S23: no fingerprint
+        assert store.fingerprint(sid) is None
+        assert stamp_unfingerprinted(register, store) >= 1
     assert store.fingerprint(sid) == record.content_sha256
 
 
@@ -176,8 +178,44 @@ def test_a_search_while_a_committed_version_is_being_moved_finds_its_staged_pass
     real_promote = store.promote_for_source
     store.promote_for_source = lambda source_id: (_ for _ in ()).throw(OSError("busy"))
     try:
-        core.state.content._write_version(register.get(sid), V2, approve=True)  # committed; the move failed
+        as_job(core, core.state.content._write_version, register.get(sid), V2, approve=True)  # committed; the move failed
         found = [s.text for r, s in index.current().items if r.id == sid]
     finally:
         store.promote_for_source = real_promote
     assert found and "finance director" in " ".join(found).lower()
+
+
+def test_a_step_failing_after_the_commit_never_fails_the_publish(acme):
+    """S5 (the red team's round-7 candidate): the workspace's own records are updated after the version went live; when
+    that step fails, the publish is still published, says so, and the failure is noted in the document's activity."""
+    core, sid = acme
+    content, register = core.state.content, core.state.register
+    draft = "# Vault\n\nThe vault code changes every Monday.\n"
+    with writing(core):
+        content.save_draft(sid, draft)
+        content.submit(sid)
+    draft_sha = content.store.document(sid)["draft_sha"]
+    content.hooks["published"] = lambda *args: (_ for _ in ()).throw(OSError("sales-records.json: disk full"))
+    try:
+        result = as_job(core, content.publish, sid, draft_sha)
+    finally:
+        content.hooks["published"] = None
+    assert result["version"] == register.get(sid).history_n
+    assert register.read_content(sid, sha=register.get(sid).content_sha256).decode() == draft
+    assert (content.store.document(sid) or {}).get("draft_text") is None
+    assert any(row["action"] == "step not completed" for row in content.store.activity(sid))
+
+
+def test_a_version_written_without_approval_keeps_the_status_its_writer_saw(acme):
+    """A writer holding a stale record (pending) writes a new version without approval after an approval of the old
+    text landed in between: the new version is not approved (red team round 1). Under the door a request cannot
+    interleave like this (S8 refuses the approval first), so this is a second line, for jobs; proven here directly."""
+    core, sid = acme
+    content, register = core.state.content, core.state.register
+    with writing(core):
+        register.update(sid, approval_status="pending")
+    stale = register.get(sid)
+    with writing(core):
+        register.update(sid, approval_status="approved")  # the old text approved, after the writer read its record
+        content._write_version(stale, b"# Vault\n\nThe vault code changes every Friday.\n", approve=False)
+    assert register.get(sid).approval_status != "approved", "the unapproved version inherited the approval"

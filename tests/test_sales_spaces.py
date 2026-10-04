@@ -6,6 +6,7 @@ import pytest
 from iam_helpers import sign_in
 
 from services.opsatlas_sales.spaces import FAMILY, PLAYBOOK, PRODUCT, SYSTEM, library_chain
+from tests.door_helpers import decide, writing
 
 
 @pytest.fixture
@@ -78,7 +79,7 @@ def test_a_transfer_moves_the_whole_document_and_it_arrives_unapproved(sales):
     png = base64.b64decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=')
     image = client.post('/api/content/assets', files={'file': ('i.png', png, 'image/png')}).json()['url']
     sid = upload(client, 'faq.md', f'# FAQ\n\nThe guide answers common questions. ![i]({image})\n')
-    assert client.post(f'/api/governance/sources/{sid}/approve').status_code == 200
+    assert decide(client, sid).status_code == 200
     assert app.state.family_register.get(sid).approval_status == 'approved'
     client.post(f'/api/content/documents/{sid}/comments', json={'quote': 'common questions', 'text': 'Keep this short.'})
     from assistant.ontology import ontology_id
@@ -109,9 +110,10 @@ def test_the_layout_places_each_document_once_keeps_folders_and_prunes_only_what
     sections = knowledge.sections
     # The Human moves a guide record's document to the playbook: a restart's layout leaves it there.
     record = next(r for r in knowledge.records() if r['id'] == 'overview')
-    move_document(record['source_id'], (family.registers[PRODUCT], sections.stores[PRODUCT]),
-                  (family.registers[PLAYBOOK], sections.stores[PLAYBOOK]), keep_approval=True)
-    assert apply_family_layout(knowledge, family, sections, app.state.spaces) == []
+    with writing(app):  # a move and a restart's layout are jobs, holding the workspace's lock (REF S23, S7)
+        move_document(record['source_id'], (family.registers[PRODUCT], sections.stores[PRODUCT]),
+                      (family.registers[PLAYBOOK], sections.stores[PLAYBOOK]), keep_approval=True)
+        assert apply_family_layout(knowledge, family, sections, app.state.spaces) == []
     assert family.space_of(record['source_id']) == PLAYBOOK
     # Evidence moved into the playbook kept a folder there; the guide lost no folder the Human made.
     evidence = next(ref['source_id'] for r in knowledge.records() for ref in r['references'])
@@ -130,14 +132,15 @@ def test_a_legacy_workspace_is_split_into_the_family_spaces_with_approvals_and_f
     app = create_sales_app(root)
     family = app.state.family_register
     # Put everything back in core, as before spaces, with a folder around the evidence.
-    for space in (PLAYBOOK, SYSTEM):
-        for source in list(family.registers[space].list()):
-            from services.opsatlas_sales.spaces import move_document
-            move_document(source.id, (family.registers[space], app.state.sales.sections.stores[space]),
-                          (family.registers[PRODUCT], app.state.sales.sections.stores[PRODUCT]), keep_approval=True,
-                          folder=['Evidence', 'DT603 paper'] if space == PLAYBOOK else ['Tibi', 'Conversation style'])
-    approved = next(s for s in family.registers[PRODUCT].list() if s.title and 'Commercial' in s.title)
-    family.registers[PRODUCT].update(approved.id, approval_status='approved')
+    from services.opsatlas_sales.spaces import move_document
+    with writing(app):  # set-up is a job, holding the workspace's lock (REF S23, S7)
+        for space in (PLAYBOOK, SYSTEM):
+            for source in list(family.registers[space].list()):
+                move_document(source.id, (family.registers[space], app.state.sales.sections.stores[space]),
+                              (family.registers[PRODUCT], app.state.sales.sections.stores[PRODUCT]), keep_approval=True,
+                              folder=['Evidence', 'DT603 paper'] if space == PLAYBOOK else ['Tibi', 'Conversation style'])
+        approved = next(s for s in family.registers[PRODUCT].list() if s.title and 'Commercial' in s.title)
+        family.registers[PRODUCT].update(approved.id, approval_status='approved')
     (root / 'spaces.json').unlink()
     again = create_sales_app(root)
     family = again.state.family_register

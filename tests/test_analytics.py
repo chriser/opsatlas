@@ -71,7 +71,7 @@ def test_scorecard_endpoint_logs_asks(tmp_path):
         data={"title": "Controls"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
     client.post("/api/ask", json={"q": "are credit checks mandatory?"})  # answered
 
     sc = client.get("/api/analytics/scorecard").json()

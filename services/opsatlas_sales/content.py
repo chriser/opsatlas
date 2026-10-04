@@ -253,7 +253,7 @@ def attach(content, knowledge, desk, library=True) -> None:
         rows = knowledge.records()
         row = record_of(source.id, rows)
         if row is None:
-            content._approve(source.id) if approve else content._reject(source.id)
+            content._approve(source.id, source.content_sha256) if approve else content._reject(source.id, source.content_sha256)
             return
         try:
             knowledge.decide(row["id"], row["sha256"], approve)  # the record's own review: enabled or excluded

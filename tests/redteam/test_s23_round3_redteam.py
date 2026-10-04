@@ -7,6 +7,7 @@ import hashlib
 import logging
 import sqlite3
 import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -17,6 +18,7 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.register import ContentReplaced, SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import as_job, writing
 
 BODY = "The supervisor signs the handover log at 06:00 each day and checks the gate seals.\n"
 A = "# Shift handover\n\n" + BODY
@@ -215,8 +217,14 @@ def test_s23_round3_reader_first_version_overwrites_committed_record(tmp_path, m
     """S6/S2: the upload's history write failed, so the record names no version. A content view (a reader) then adds
     one and writes history_n/history_sha without the lock and without checking the record's text; a publish that
     commits meanwhile is overwritten, so the record's text is B but it names version (and SHA) A, and every citation
-    of B's passages, and the delivery recheck, carry A's version."""
+    of B's passages, and the delivery recheck, carry A's version. Restated for the door (REF S23, the Human's decision
+    after round 7): the stores are governed by a workspace's lock, as every space's are in a workspace (the space lock
+    they had before the door is gone, so the publish raced the reader unchecked and passed only by timing), and the
+    publish is a job holding it. The reader names the first version only when the lock is free, holding it meanwhile,
+    so the publish waits for it."""
     reg, sections, content, sid = _setup(tmp_path, fail_first_history_write=True)
+    for store in (reg, sections, content.store):  # governed, as a workspace's stores are (REF S23, S7)
+        store.governed_by = tmp_path / "workspace"
     assert reg.get(sid).history_n is None
     original = content.store.add_version
     state = {"raced": False, "error": None}
@@ -227,12 +235,14 @@ def test_s23_round3_reader_first_version_overwrites_committed_record(tmp_path, m
 
             def run():
                 try:
-                    _publish(content, sid, B)
+                    as_job(reg, _publish, content, sid, B)
                 except Exception as exc:  # pragma: no cover - reported below
                     state["error"] = exc
 
-            state["worker"] = threading.Thread(target=run)
+            state["worker"] = threading.Thread(target=run, daemon=True)
             state["worker"].start()  # restated (REF S23, S7): the publish waits for the reader's lock, not the reverse
+            time.sleep(0.3)
+            state["waited"] = reg.get(sid).content_sha256 == sha(A.encode())
         return original(*a, **k)
 
     monkeypatch.setattr(content.store, "add_version", publish_meanwhile)
@@ -240,6 +250,7 @@ def test_s23_round3_reader_first_version_overwrites_committed_record(tmp_path, m
     state["worker"].join(20)
     monkeypatch.setattr(content.store, "add_version", original)
     assert state["error"] is None, state["error"]
+    assert state["waited"], "the publish committed while the reader was naming the first version"
 
     record = reg.get(sid)
     live = reg.read_content(sid, sha=record.content_sha256).decode()
@@ -255,22 +266,29 @@ def test_s23_round3_reader_first_version_overwrites_committed_record(tmp_path, m
 def test_s23_round3_approval_of_read_version_lands_on_newer_unapproved_version(tmp_path, monkeypatch):
     """S1 (and the rule that a version written without approval is not approved): decide checks the SHA the Human
     read, then approves the record with no lock; a rename that writes an unapproved version in between is approved by
-    it, so every reader sees as approved a text nobody approved."""
+    it, so every reader sees as approved a text nobody approved. Restated for the door (REF S23, the Human's decision
+    after round 7): the approval and the rename are each a job holding the door's lock, as their requests would be, so
+    the rename started inside the approval waits at the lock until the approval is done (no service lock remains)."""
     reg, sections, content, sid = _setup(tmp_path, approve=False)
     content.hooks["retitle"] = lambda source, title: f"# {title}\n\n{BODY}"  # a document whose title is its heading
     expected = content.document(sid)["published"]["sha"]
     original_approve = content._approve
 
-    workers = []
+    workers, seen = [], {}
 
-    def rename_meanwhile(source_id):
-        workers.append(threading.Thread(target=lambda: content.rename(sid, "Gate handover")))
+    def rename_meanwhile(source_id, sha):
+        workers.append(threading.Thread(target=lambda: as_job(content, content.rename, sid, "Gate handover"),
+                                        daemon=True))
         workers[-1].start()  # restated (REF S23, S7): the rename waits for the approval's lock
-        return original_approve(source_id)
+        time.sleep(0.3)
+        seen["waited"] = reg.get(sid).version == 1
+        original_approve(source_id, sha)
+        seen["decided"] = reg.get(sid)  # still inside the approval, which holds the lock
 
     monkeypatch.setattr(content, "_approve", rename_meanwhile)
-    content.decide(sid, expected, approve=True)
-    decided = reg.get(sid)
+    as_job(content, content.decide, sid, expected, approve=True)
+    assert seen["waited"], "the rename wrote its version while the approval held the lock"
+    decided = seen["decided"]
     assert decided.version == 1 and decided.approval_status == "approved", (
         "the approval did not land on the version the Human read")
     workers[-1].join(20)
@@ -353,22 +371,28 @@ def test_s23_round3_reader_move_puts_writers_uncommitted_staged_text_live(tmp_pa
     """S1/S3/S2: a reader holding committed record B checks the staged file is B, then (no lock, no re-check) renames
     it; a writer meanwhile settles B itself and stages C. The reader's rename puts C live before C's record is
     written. C's commit then fails: the record says B, B's text is gone from disk (readers holding B get nothing), and
-    the content views show C, which was never committed."""
+    the content views show C, which was never committed. Restated for the door (REF S23, the Human's decision after
+    round 7): the stores are governed by a workspace's lock, as every space's are in a workspace (the space lock they
+    had before the door is gone), and the writer is a job holding it. The reader's move only tries that lock and
+    checks again under it, so while the reader is moving B the writer waits; it then stages C and its commit fails."""
     reg, sections, content, sid = _setup(tmp_path)
-    with monkeypatch.context() as m:  # B committed, not yet moved (a crash after the record's write)
+    for store in (reg, sections, content.store):  # governed, as a workspace's stores are (REF S23, S7)
+        store.governed_by = tmp_path / "workspace"
+    with monkeypatch.context() as m, writing(reg):  # B committed, not yet moved (a crash after the record's write)
         m.setattr(content, "_move_into_place", lambda source_id: None)
         content._write_version(reg.get(sid), B.encode(), approve=True, history={"label": "approved", "note": None})
     assert reg.get(sid).content_sha256 == sha(B.encode())
     assert (tmp_path / "sources" / f"{sid}.staged").read_bytes() == B.encode()
 
-    reader_ready, writer_staged, reader_done = threading.Event(), threading.Event(), threading.Event()
+    reader_ready, release_reader = threading.Event(), threading.Event()
+    writer_staged, reader_done = threading.Event(), threading.Event()
     original_promote, original_update = reg.promote_content, reg.update
     out = {}
 
     def promote(source_id):
         if threading.current_thread().name == "reader":
             reader_ready.set()
-            writer_staged.wait(10)
+            release_reader.wait(10)
         return original_promote(source_id)
 
     def update(source_id, **fields):
@@ -393,13 +417,19 @@ def test_s23_round3_reader_move_puts_writers_uncommitted_staged_text_live(tmp_pa
     def write():
         reader_ready.wait(10)
         try:
-            content._write_version(reg.get(sid), C.encode(), approve=True, history={"label": "approved", "note": None})
+            as_job(reg, lambda: content._write_version(reg.get(sid), C.encode(), approve=True,
+                                                       history={"label": "approved", "note": None}))
         except OSError:
             out["write_failed"] = True
 
-    threads = [threading.Thread(target=read, name="reader"), threading.Thread(target=write, name="writer")]
+    threads = [threading.Thread(target=read, name="reader", daemon=True),
+               threading.Thread(target=write, name="writer", daemon=True)]
     for t in threads:
         t.start()
+    assert reader_ready.wait(10)  # the reader has checked the staged file and is about to move it
+    time.sleep(0.3)
+    staged_c_early = writer_staged.is_set()  # the writer must wait for the reader's move (it holds the lock)
+    release_reader.set()
     for t in threads:
         t.join(20)
     monkeypatch.setattr(reg, "promote_content", original_promote)
@@ -408,6 +438,8 @@ def test_s23_round3_reader_move_puts_writers_uncommitted_staged_text_live(tmp_pa
     record = reg.get(sid)
     problems = []
     assert out.get("write_failed") and record.content_sha256 == sha(B.encode())
+    if staged_c_early:
+        problems.append("S7: the writer staged C while a reader was moving B")
     if out.get("during") == C:
         problems.append("S1: a content view showed C before its record was written")
     try:

@@ -47,7 +47,7 @@ from ..sources.register import SourceRegister
 from ..sources.settle import stamp_unfingerprinted
 from ..space_config import SpaceConfig
 from ..space_statements import SpaceStatements, texts_of
-from ..storage import SharedLock, lock_of
+from ..storage import WriteDoor, locked
 from .access import DEFAULT_SPACE, AccessError, PrincipalMiddleware, by_method, derived_guard, need, public, source_guard
 from .auth import AuthService, auth_from_env
 from .routes_analytics import build_analytics_router
@@ -106,6 +106,9 @@ def create_app(
         return JSONResponse({"detail": exc.detail, "code": exc.code, "request_id": getattr(request.state, "request_id", "")},
                             status_code=exc.status_code, headers=exc.headers)
 
+    # The door (REF S23, S7): a request that may change something takes the workspace's one lock once, here, before
+    # any handler runs. A workspace that governs this core points it at the workspace's lock.
+    app.add_middleware(WriteDoor, lock_path=lambda: app.state.write_lock, passes=DOOR_PASSES)
     # The control panel dev server (Vite) proxies /api to this backend; CORS is
     # permissive in this PoC but scoped to local development origins.
     app.add_middleware(
@@ -118,6 +121,7 @@ def create_app(
 
     data_dir = Path(settings.get("KP_DATA_DIR"))
     registry = register or SourceRegister(data_dir)
+    app.state.write_lock = registry.index_file  # this core's own, until a workspace governs it (REF S23, S7)
     config = space_config or SpaceConfig.load(registry.base_dir)  # the space's cues and refusal wording (ARCH H2)
     # Its fixed sentences are governed (REF S22): the space speaks their approved versions.
     statements = SpaceStatements(registry.base_dir)
@@ -299,8 +303,10 @@ def create_app(
     app.include_router(build_observability_router(audit_trace, dependencies=by_method(GET="diagnostics.traces.read")))
     # Content management: governed editing of any source (CM E1). A workspace adds its own hooks to app.state.content.
     content_service = ContentService(registry, section_store, actions=actions_engine, events=event_store)
-    # The content store locks with the space's one lock, so no lock is ever taken before it (REF S23, S7).
-    content_service.store.lock = SharedLock(lock_of(registry))
+    # A core on its own is governed too (REF S23, S7): its stores refuse a write from anything its door did not let
+    # in. A workspace that governs it points all of them at the workspace's lock instead.
+    for store in (registry, section_store, content_service.store):
+        store.governed_by = app.state.write_lock
 
     def self_approval(person_id: str) -> bool:
         """REF S15: a person may publish a draft they wrote only in solo-operator mode, holding governance.self_approve.
@@ -320,12 +326,20 @@ def create_app(
     answer_service.receipts = ReceiptStore(registry.base_dir)
     answer_service.version_of = content_service.current_version
     registry.on_add.append(content_service.first_version)
-    content_service.ensure_all_versions()  # sources registered before receipts existed, once
-    stamp_unfingerprinted(registry, section_store)  # passages stored before the staged publish, once (REF S23)
+    with locked(app.state.write_lock):  # start-up is a job: it holds the lock like a request (REF S23, S7)
+        content_service.ensure_all_versions()  # sources registered before receipts existed, once
+        stamp_unfingerprinted(registry, section_store)  # passages stored before the staged publish, once (REF S23)
     app.include_router(build_content_router(content_service, dependencies=[*by_method(GET="documents.read"), Depends(source_guard)]))
     app.include_router(build_content_assets_router(content_service, dependencies=[need("assets.read")]))
     app.include_router(build_statements_router(app, registry.base_dir))  # governed fixed sentences (REF S22)
     return app
+
+
+# Requests that change nothing a workspace's door guards (REF S23, S7): sign-in and access management (their own
+# store), asks and searches, the avatar and Tibi's channel, service control and the activity log. They never wait for
+# the lock, and the stores prove the list: a governed write from one of them is refused.
+DOOR_PASSES = ("/api/auth", "/api/iam", "/api/ask", "/api/query", "/api/answers", "/api/avatar", "/api/sales/search",
+               "/api/tibi/ws-ticket", "/services/tibi", "/api/services", "/api/activity", "/api/process/diagrams/service")
 
 
 # No module-level app (AUDIT F5): importing this module built a second core, with a stray iam.db in the data folder.

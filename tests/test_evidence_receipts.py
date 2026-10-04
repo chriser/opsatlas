@@ -12,6 +12,8 @@ from fastapi.testclient import TestClient
 from iam_helpers import sign_in
 from test_space_leaks import hermetic, refuse
 
+from tests.door_helpers import decide
+
 DOC = "# Returns\n\nA customer may return goods within 30 days with a receipt. The store manager approves refunds.\n"
 QUESTION = "Who approves refunds?"
 
@@ -33,7 +35,7 @@ def acme(tmp_path, monkeypatch):
         up = client.post("/api/sources/upload", files={"file": ("returns.md", DOC.encode(), "text/markdown")}, headers=head).json()
         sid = up["id"] if "id" in up else up["source"]["id"]
         client.post(f"/api/sources/{sid}/ingest", headers=head)
-        assert client.post(f"/api/governance/sources/{sid}/approve", headers=head).status_code == 200
+        assert decide(client, sid, headers=head).status_code == 200
         yield client, app, head, sid
 
 

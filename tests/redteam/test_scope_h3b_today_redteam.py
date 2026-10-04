@@ -17,6 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from iam_helpers import sign_in  # noqa: E402
 from test_space_leaks import hermetic, refuse  # noqa: E402
 
+from tests.door_helpers import as_job, decide, writing
+
 TODAY = "2026-10-03"
 HEAD = {"X-OpsAtlas-Space": "acme"}
 
@@ -64,11 +66,17 @@ class Space:
         sid = body["id"] if "id" in body else body["source"]["id"]
         assert self.client.post(f"/api/sources/{sid}/ingest", headers=HEAD).status_code == 200
         if approve:
-            r = self.client.post(f"/api/governance/sources/{sid}/approve", headers=HEAD)
+            r = decide(self.client, sid, headers=HEAD)
             assert r.status_code == 200, r.text
         if scope:
-            self.register.update(sid, **scope)
+            with writing(self.core):  # set-up is a job (REF S23, the door)
+                self.register.update(sid, **scope)
         return sid
+
+    def edit(self, sid: str, **fields) -> None:
+        """An edit landing while an answer is prepared: a job holding the workspace's lock, as the details request
+        would (REF S23, the door); the ask passes the door and does not wait for it."""
+        as_job(self.core, self.register.update, sid, **fields)
 
     def ask(self, q: str) -> dict:
         r = self.client.post("/api/ask", json={"q": q}, headers=HEAD)
@@ -175,8 +183,10 @@ def test_a_month_in_the_question_changes_which_sources_answer(space):
 # while an answer is prepared applies from the next answer, on the facts-map path as on the documents ---
 
 def test_facts_map_answer_skips_the_scope_recheck(space):
+    """Restated for the door (REF S23, the Human's decision after round 7): the edit mid-answer is a
+    job holding the workspace's lock, as its request would; the ask passes the door and does not wait."""
     sid = space.add("p.md", process_doc("Acme returns", "Returns Warden", "RETVAULT-77", "MARK-77"))
-    space.core.state.answer.generator = HookEcho(lambda: space.register.update(sid, effective_to="2026-10-02"))
+    space.core.state.answer.generator = HookEcho(lambda: space.edit(sid, effective_to="2026-10-02"))
     r = space.ask("Which systems are used?")
     assert r["answer_path"] == "oag" and "RETVAULT-77" in r["answer"]  # judged on the reading taken as it began
     r = space.ask("Which systems are used?")
@@ -185,15 +195,19 @@ def test_facts_map_answer_skips_the_scope_recheck(space):
 
 
 def test_document_answer_rechecks_the_same_interleaving(space):
+    """Restated for the door (REF S23, the Human's decision after round 7): the edit mid-answer is a
+    job holding the workspace's lock, as its request would; the ask passes the door and does not wait."""
     sid = space.add("p.md", plain_doc("Returns basics", "DOC-88"))
-    space.core.state.answer.generator = HookEcho(lambda: space.register.update(sid, effective_to="2026-10-02"))
+    space.core.state.answer.generator = HookEcho(lambda: space.edit(sid, effective_to="2026-10-02"))
     assert "DOC-88" in space.ask("What is the returns process?")["answer"]
     assert "DOC-88" not in space.ask("What is the returns process?")["answer"]
 
 
 def test_label_that_appears_mid_answer_is_not_rechecked(space):
+    """Restated for the door (REF S23, the Human's decision after round 7): the edit mid-answer is a
+    job holding the workspace's lock, as its request would; the ask passes the door and does not wait."""
     sid = space.add("p.md", plain_doc("Returns basics", "LATER-99"))
-    space.core.state.answer.generator = HookEcho(lambda: space.register.update(sid, effective_from="2027-01-01"))
+    space.core.state.answer.generator = HookEcho(lambda: space.edit(sid, effective_from="2027-01-01"))
     assert "In force from 1 January 2027" not in space.ask("What is the returns process?")["answer"]
     r = space.ask("What is the returns process?")
     assert "LATER-99" in r["answer"] and "In force from 1 January 2027" in r["answer"], (
@@ -203,15 +217,17 @@ def test_label_that_appears_mid_answer_is_not_rechecked(space):
 # --- Promise 5 (interleaving): nothing scoped, yet scope on answers differently from scope off ---
 
 def test_unscoped_approval_mid_answer_refuses_only_with_scope_on(space):
+    """Restated for the door (REF S23, the Human's decision after round 7): the approval mid-answer
+    is a job holding the workspace's lock, as its request would; the ask passes the door and does not wait."""
     space.add("base.md", plain_doc("Returns basics", "BASE-10"))
     p1 = space.add("p1.md", plain_doc("Exchanges", "P1-20", topic="exchanges"), approve=False)
     p2 = space.add("p2.md", plain_doc("Refunds", "P2-30", topic="refunds"), approve=False)
     os.environ["KP_SCOPE_EVIDENCE"] = "0"
-    space.core.state.answer.generator = HookEcho(lambda: space.register.update(p1, approval_status="approved"))
+    space.core.state.answer.generator = HookEcho(lambda: space.edit(p1, approval_status="approved"))
     off = space.ask("What is the returns process?")
     assert not off["refused"] and "BASE-10" in off["answer"]
     os.environ["KP_SCOPE_EVIDENCE"] = "1"
-    space.core.state.answer.generator = HookEcho(lambda: space.register.update(p2, approval_status="approved"))
+    space.core.state.answer.generator = HookEcho(lambda: space.edit(p2, approval_status="approved"))
     on = space.ask("What is the returns process?")
     assert (on["refused"], on["mode"]) == (off["refused"], off["mode"]), (
         "no source has any scope, yet with scope on the answer is withheld as 'evidence changed'")

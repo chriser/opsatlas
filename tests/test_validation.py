@@ -49,7 +49,7 @@ def make_client(tmp_path, validator) -> TestClient:
         data={"title": "Controls"},
     ).json()
     client.post(f"/api/sources/{rec['id']}/ingest")
-    client.post(f"/api/governance/sources/{rec['id']}/approve")
+    client.post(f"/api/governance/sources/{rec['id']}/approve", json={"sha": rec["content_sha256"]})
     return client
 
 

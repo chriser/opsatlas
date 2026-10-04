@@ -18,6 +18,7 @@ from iam_helpers import sign_in
 from test_space_leaks import fill, hermetic, refuse
 
 from assistant.api.access import manifest
+from tests.door_helpers import decide
 
 CODE, TITLE = "Wombat-Ledger-5528", "Kestrel-Quill"
 MARKERS = (CODE, TITLE)
@@ -54,7 +55,7 @@ def acme(tmp_path_factory):
                 up = client.post("/api/sources/upload", files={"file": (name, text.encode(), "text/markdown")}, headers=head).json()
                 sid = up["id"] if "id" in up else up["source"]["id"]
                 client.post(f"/api/sources/{sid}/ingest", headers=head)
-                assert client.post(f"/api/governance/sources/{sid}/approve", headers=head).status_code == 200
+                assert decide(client, sid, headers=head).status_code == 200
                 ids[name] = sid
             iam = app.state.auth.iam
             admin_id = iam.store.one("SELECT id FROM users WHERE login = ?", ("operator@example.test",))["id"]

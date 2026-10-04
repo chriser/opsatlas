@@ -1,5 +1,4 @@
 """Hash-bound curated records stored through Atlas registration and ingestion."""
-import contextlib
 import hashlib
 import json
 import re
@@ -11,7 +10,7 @@ from assistant.iam.context import acting_id, acting_name
 from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.service import register_upload
-from assistant.storage import lock_of, locked
+from assistant.storage import writes
 
 from . import claims
 from .workspace import REPO
@@ -41,7 +40,9 @@ class Knowledge:
         self.sections = sections or SectionStore(register.base_dir)
         self.path = register.base_dir / 'sales-records.json'
         self.spoken_path = register.base_dir / 'sales-spoken.json'
-        self.lock = threading.Lock()
+        # This store's own lock, within one process; only writers take it, after the workspace's door (REF S23, S7).
+        self.lock = threading.RLock()
+        self.governed_by = None  # the workspace's lock its writes must hold, set by the workspace (REF S23, S7)
 
     def _withdraw(self, source_id):
         """Withdraw a record's document through the audited action, so the process registry and the facts map are
@@ -60,11 +61,13 @@ class Knowledge:
     def records(self):
         return json.loads(self.path.read_text()) if self.path.exists() else []
 
+    @writes
     def _save(self, rows):
         temporary = self.path.with_suffix('.tmp')
         temporary.write_text(json.dumps(rows, indent=2) + '\n')
         temporary.replace(self.path)
 
+    @writes
     def seed(self, corpus=None, papers=None):
         """Create the starting records once, then add any new corpus records as pending.
 
@@ -94,6 +97,7 @@ class Knowledge:
             marker.write_text(json.dumps({'corpus': corpus.name}) + '\n')
             return self.catalog()
 
+    @writes
     def seed_conversation(self, corpus):
         """Add conversation-style records (how Tibi chats, not what OpsAtlas does) as pending.
 
@@ -248,11 +252,10 @@ class Knowledge:
             {'id': r['id'], 'title': r['title'], 'text': r['text'], 'sha256': r['sha256']}
             for r in self.overlaps(row, rows)]} for row in rows]
 
+    @writes
     def decide(self, identifier, expected_hash, approve):
-        # The space lock first, then this store's (REF S23, S7: one writer per space): the version reviewed is the one
-        # approved, and no lock is taken in the opposite order to a publish.
-        found = next((r for r in self.records() if r['id'] == identifier), None)
-        with self._space_lock(found['source_id'] if found else None), self.lock:
+        # Under the workspace's lock, taken at the door (REF S23, S7): the version reviewed is the one approved.
+        with self.lock:
             rows = self.records()
             row = next((r for r in rows if r['id'] == identifier), None)
             if not row:
@@ -269,8 +272,8 @@ class Knowledge:
             state = 'approved' if approve else 'rejected'
             if self.actions and source.approval_status != state:
                 from assistant.ontology.actions import acting_person
-                result = self.actions.execute('approve_source' if approve else 'reject_source',
-                                              {'source_id': source.id}, acting_person('service:workspace-key'))
+                result = self.actions.execute('approve_source' if approve else 'reject_source',  # the text reviewed (S8)
+                                              {'source_id': source.id, 'sha': expected_hash}, acting_person('service:workspace-key'))
                 if result.outcome != 'ok':
                     raise ValueError('Atlas approval action failed; review remains pending')
             else:
@@ -284,12 +287,7 @@ class Knowledge:
                 log.write(json.dumps({'id': identifier, 'decision': state, **row['review']}) + '\n')
             return {**row, 'approval': self.native_approval(row), 'eligible': self.eligible(row)}
 
-    def _space_lock(self, source_id):
-        if source_id and hasattr(self.register, 'space_lock') and self.register.get(source_id) is not None:
-            return self.register.space_lock(source_id)
-        index = lock_of(self.register)
-        return locked(index) if source_id and index is not None else contextlib.nullcontext()
-
+    @writes
     def propose(self, data):
         """Idempotent, versioned contributor wording. Old approved revisions are withdrawn first."""
         required = {'session_id', 'turn_id', 'contributor', 'topic', 'question', 'raw_text', 'text', 'status',
@@ -344,6 +342,7 @@ class Knowledge:
             self._save(rows)
             return {**row, 'eligible': False}
 
+    @writes
     def adjudicate(self, identifier, expected_hash, decision, related, reason):
         """Explicit operator resolution; never let a model silently decide whose account wins."""
         if (decision not in ('distinct_scope', 'supersede', 'dispute')
@@ -372,6 +371,7 @@ class Knowledge:
                 log.write(json.dumps({'id': identifier, **row['resolution']}) + '\n')
             return {**row, 'approval': self.native_approval(row), 'eligible': self.eligible(row)}
 
+    @writes
     def settle(self, statements, resolution, reason):
         """Apply the Human's approved decision on a statement finding between two records (GOV S9).
 
@@ -490,6 +490,7 @@ class Knowledge:
     def spoken(self):
         return json.loads(self.spoken_path.read_text()) if self.spoken_path.exists() else []
 
+    @writes
     def _save_spoken(self, rows):
         temporary = self.spoken_path.with_suffix('.tmp')
         temporary.write_text(json.dumps(rows, indent=2) + '\n')
@@ -507,6 +508,7 @@ class Knowledge:
                            'usable': variant['status'] == 'approved' and current and intact})
         return result
 
+    @writes
     def add_spoken(self, record_id, text, origin):
         """Store a pending spoken variant. Checked against its record; never approved here."""
         text = ' '.join(str(text).split())
@@ -533,6 +535,7 @@ class Knowledge:
             self._save_spoken([*rows, variant])
             return variant
 
+    @writes
     def review_spoken(self, variant_id, expected_hash, approve):
         with self.lock:
             rows = self.spoken()

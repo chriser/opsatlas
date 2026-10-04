@@ -50,7 +50,7 @@ def client_with(tmp_path, reply: str, config: SpaceConfig | None, *, seeded: boo
         record = client.post("/api/sources/upload", files={"file": ("guide.md", DOC.encode(), "text/markdown")},
                              data={"title": "Guide"}).json()
         client.post(f"/api/sources/{record['id']}/ingest")
-        client.post(f"/api/governance/sources/{record['id']}/approve")
+        client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
     return client, generator
 
 

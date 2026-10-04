@@ -3,17 +3,13 @@
 from __future__ import annotations
 
 import hashlib
-import threading
 from pathlib import Path
 
 from ..sources import settle as settling
 from ..sources.models import SourceRecord
 from ..sources.register import SourceRegister
-from ..storage import lock_of, locked
 from .sections import build_sections
 from .store import SectionStore
-
-_INGEST_LOCK = threading.Lock()  # for a register without an index file (a test double)
 
 PLAIN_TEXT_EXTENSIONS = {".txt", ".md", ".json"}
 SUPPORTED_EXTENSIONS = PLAIN_TEXT_EXTENSIONS | {".pdf", ".docx"}
@@ -104,11 +100,9 @@ def ingest_source(
     section_store: SectionStore,
     source_id: str,
 ) -> SourceRecord:
-    # One at a time with a publish's swap (REF S23): an ingest that read one version's text never writes its passages
-    # over another version's.
-    index = lock_of(register)
-    with locked(index) if index is not None else _INGEST_LOCK:
-        return _ingest(register, section_store, source_id)
+    # One at a time with a publish's swap, under the workspace's lock taken at the door (REF S23, S7): an ingest that
+    # read one version's text never writes its passages over another version's.
+    return _ingest(register, section_store, source_id)
 
 
 def _ingest(register: SourceRegister, section_store: SectionStore, source_id: str) -> SourceRecord:

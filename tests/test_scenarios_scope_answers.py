@@ -32,6 +32,8 @@ from iam_helpers import sign_in
 from scenarios import explore
 from test_space_leaks import hermetic, refuse
 
+from tests.door_helpers import as_job, decide
+
 TODAY = date(2026, 10, 3)
 HEAD = {"X-OpsAtlas-Space": "acme"}
 DATES = [None, None, None, "2026-01-01", "2026-10-03", "2026-10-02", "2027-01-01", "2026-12-31", "2025-12-31",
@@ -112,12 +114,12 @@ def space(tmp_path, monkeypatch):
             sid = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
             assert client.post(f"/api/sources/{sid}/ingest", headers=HEAD).status_code == 200
             if n != 4:  # d4 stays pending
-                assert client.post(f"/api/governance/sources/{sid}/approve", headers=HEAD).status_code == 200
+                assert decide(client, sid, headers=HEAD).status_code == 200
             ids.append(sid)
         up = client.post("/api/sources/upload", files={"file": ("lighting.md", FILLER.encode(), "text/markdown")}, headers=HEAD)
         filler = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
         assert client.post(f"/api/sources/{filler}/ingest", headers=HEAD).status_code == 200
-        assert client.post(f"/api/governance/sources/{filler}/approve", headers=HEAD).status_code == 200
+        assert decide(client, filler, headers=HEAD).status_code == 200
         yield client, core, ids, filler
 
 
@@ -213,17 +215,17 @@ def one_run(run, client, core, ids, filler):
         elif run.rng.random() < 0.15:
             fields["supersedes"] = [run.rng.choice([i for i in ids if i != sid])]
         state[sid] = fields
-        core.state.register.update(sid, **{k: fields[k] for k in FIELDS},
+        as_job(core, core.state.register.update, sid, **{k: fields[k] for k in FIELDS},
                                    approval_status="approved" if fields["approved"] else "pending")
     retrieval = plain or run.rng.random() < 0.35
     state[filler] = {"effective_from": None, "effective_to": None if retrieval else "2025-12-31", "applies_to": [],
                      "supersedes": [], "approved": True}
-    core.state.register.update(filler, effective_to=state[filler]["effective_to"])
+    as_job(core, core.state.register.update, filler, effective_to=state[filler]["effective_to"])
     core.state.rebuild_ontology()  # the facts map in step with the register as each run begins
     in_step = run.rng.random() >= 0.1
     if not in_step:  # red team, round 5: a source approved without a rebuild, so the map is out of step
         state[ids[4]]["approved"] = True
-        core.state.register.update(ids[4], approval_status="approved")
+        as_job(core, core.state.register.update, ids[4], approval_status="approved")
     question = run.rng.choice(QUESTIONS)
     run.step("register", "; ".join(f"d{n}: {state[s]}" for n, s in enumerate(ids)))
     before = _judge(state)
@@ -255,9 +257,10 @@ def one_run(run, client, core, ids, filler):
         for key, value in updates.items():
             after_state[target]["approved" if key == "approval_status" else key] = (
                 value == "approved" if key == "approval_status" else value)
-        edit = lambda: core.state.register.update(target, **updates)  # noqa: E731
+        edit = lambda: as_job(core, core.state.register.update, target, **updates)  # noqa: E731
         if kind == "approve-rebuild":  # the approval action, which rebuilds the search index and the facts map
-            edit = lambda: core.state.content._approve(ids[4])  # noqa: E731
+            edit = lambda: as_job(core, core.state.content._approve, ids[4],  # noqa: E731
+                                   core.state.register.get(ids[4]).content_sha256)
     else:
         edit = None
     run.step("ask", f"{question!r} with {kind} {change}")
@@ -284,7 +287,7 @@ def one_run(run, client, core, ids, filler):
             if kind == "publish-fails-after-reading":
                 store.stage_for_source = swap_fails_once
             try:
-                core.state.content._write_version(core.state.register.get(target), text, approve=True)
+                as_job(core, core.state.content._write_version, core.state.register.get(target), text, approve=True)
             except Exception:
                 assert kind == "publish-fails-after-reading"
             finally:
@@ -297,7 +300,7 @@ def one_run(run, client, core, ids, filler):
         def after_the_reading(records=None):
             service._all_sections = real_sections
             out = real_sections(records)
-            core.state.content._approve(ids[4])
+            as_job(core, core.state.content._approve, ids[4], core.state.register.get(ids[4]).content_sha256)
             return out
         service._all_sections = after_the_reading
     core.state.answer.generator = HookEcho(edit)

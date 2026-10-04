@@ -29,6 +29,8 @@ from iam_helpers import sign_in
 from scenarios import explore
 from test_space_leaks import hermetic, refuse
 
+from tests.door_helpers import as_job
+
 HEAD = {"X-OpsAtlas-Space": "acme"}
 GOOD_DATES = ["2026-12-31", "20270101", "2027-W01-5", "2025-06-30", "2028-02-29", "2027-06-01"]
 BAD_DATES = ["2026-12-311", "2026-01-015", "2027-1-1", " 2027-01-01", "2027-01-01 ", "31/12/2026", "soon", "2027-02-30",
@@ -113,7 +115,7 @@ def editor(tmp_path, monkeypatch):
 
 
 def one_run(run, client, core, sid):
-    core.state.register.update(sid, effective_from=None, effective_to=None, applies_to=[])
+    as_job(core, core.state.register.update, sid, effective_from=None, effective_to=None, applies_to=[])
     model = {"effective_from": None, "effective_to": None, "applies_to": []}
 
     def stored():

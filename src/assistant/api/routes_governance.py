@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Callable, Sequence
 
 from fastapi import APIRouter, HTTPException, Request
@@ -27,8 +26,19 @@ from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult, acting_person
 from ..regulatory.review import RegulatoryReviewStore
 from ..sources.register import SourceRegister
-from ..storage import lock_of, locked
 from .access import current_actor, need
+
+
+def names_current(record, named: str | None) -> bool:
+    """Whether a decision names the record's current text (REF S23, S8): its SHA-256. None names nothing (a withdrawal
+    by the workspace, which only rejects)."""
+    return named is None or (record is not None and record.content_sha256 == named)
+
+
+class Decision(BaseModel):
+    """An approval or rejection names the text decided on: the SHA-256 of the version the reviewer read (REF S23, S8)."""
+
+    sha: str
 
 
 class IssueRef(BaseModel):
@@ -59,6 +69,7 @@ def build_governance_router(
         if actions is None:
             return
         actions.register_validation_rule("source_exists", _validate_source_exists)
+        actions.register_validation_rule("names_current_text", _validate_names_current_text)
         actions.register_validation_rule("not_already_approved", _validate_not_already_approved)
         actions.register_validation_rule("not_already_rejected", _validate_not_already_rejected)
         actions.register_validation_rule("issue_fields_present", _validate_issue_fields_present)
@@ -80,7 +91,7 @@ def build_governance_router(
     def _raise_action_http_error(api_name: str, result: ActionExecutionResult) -> None:
         if result.failed_rule == "source_exists":
             raise HTTPException(status_code=404, detail="Source not found.")
-        if result.failed_rule in {"not_already_approved", "not_already_rejected"}:
+        if result.failed_rule in {"not_already_approved", "not_already_rejected", "names_current_text"}:
             raise HTTPException(status_code=409, detail=result.message)
         if result.outcome == "rejected":
             raise HTTPException(status_code=400, detail=result.message)
@@ -90,6 +101,15 @@ def build_governance_router(
         if register.get(str(context.params.get("source_id", ""))) is not None:
             return ValidationResult(rule="source_exists", passed=True, message="Source exists.")
         return ValidationResult(rule="source_exists", passed=False, message="Source not found.")
+
+    def _validate_names_current_text(context: ActionContext) -> ValidationResult:
+        """An approval names the text it approves (REF S23, S8): the record's text must still be that one. Checked under
+        the workspace's lock, taken at the door, so no new version can land between this check and the decision."""
+        # None: a withdrawal by the workspace (reject only: approve_source requires the parameter).
+        if names_current(register.get(str(context.params.get("source_id", ""))), context.params.get("sha")):
+            return ValidationResult(rule="names_current_text", passed=True, message="The text named is the current one.")
+        return ValidationResult(rule="names_current_text", passed=False,
+                                message="The document changed since it was read; review the current version.")
 
     def _validate_not_already_approved(context: ActionContext) -> ValidationResult:
         record = register.get(str(context.params.get("source_id", "")))
@@ -248,20 +268,29 @@ def build_governance_router(
             docs.append({"id": rec.id, "title": rec.title, "text": text.decode("utf-8", "replace")})
         return suggest_remediation(docs[0], docs[1])
 
+    def _names_current(source_id: str, named: str) -> None:
+        record = register.get(source_id)
+        if record is None:
+            raise HTTPException(status_code=404, detail="Source not found.")
+        if not names_current(record, named):  # REF S23, S8: an approval of a text nobody read is refused
+            raise HTTPException(status_code=409, detail="The document changed since it was read; review the current version.")
+
     @router.post("/sources/{source_id}/approve", dependencies=[need("documents.approve")])
-    def approve(source_id: str) -> dict:
-        action_response = _execute_operator_action("approve_source", {"source_id": source_id})
+    def approve(source_id: str, decision: Decision) -> dict:
+        action_response = _execute_operator_action("approve_source", {"source_id": source_id, "sha": decision.sha})
         if action_response is not None:
             return action_response
+        _names_current(source_id, decision.sha)
         result = _set_status(register, source_id, "approved", event_store=event_store)
         _refresh_process_registry()
         return result
 
     @router.post("/sources/{source_id}/reject", dependencies=[need("documents.reject")])
-    def reject(source_id: str) -> dict:
-        action_response = _execute_operator_action("reject_source", {"source_id": source_id})
+    def reject(source_id: str, decision: Decision) -> dict:
+        action_response = _execute_operator_action("reject_source", {"source_id": source_id, "sha": decision.sha})
         if action_response is not None:
             return action_response
+        _names_current(source_id, decision.sha)
         result = _set_status(register, source_id, "rejected", event_store=event_store)
         _refresh_process_registry()
         return result
@@ -311,9 +340,7 @@ def _visible_review(result: InternalReviewResult) -> dict:
 
 
 def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None) -> dict:
-    index = lock_of(register)
-    with locked(index) if index is not None else contextlib.nullcontext():  # one writer per space (REF S23, S7)
-        record = register.update(source_id, approval_status=status)
+    record = register.update(source_id, approval_status=status)  # under the workspace's lock, taken at the door (S7)
     if record is None:
         raise HTTPException(status_code=404, detail="Source not found.")
     if event_store is not None:

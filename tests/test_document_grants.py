@@ -9,6 +9,8 @@ from fastapi.testclient import TestClient
 from iam_helpers import sign_in
 from test_space_leaks import hermetic, refuse
 
+from tests.door_helpers import decide
+
 SECRET = "Quokka-Vault-9931"
 PUBLIC_DOC = "# Ordering\n\nThe buyer raises a purchase order for every supplier.\n"
 SECRET_DOC = f"# Payroll exceptions\n\nThe payroll officer signs every exception with the code {SECRET}.\n"
@@ -35,7 +37,7 @@ def acme(tmp_path, monkeypatch):
             up = client.post("/api/sources/upload", files={"file": (name, text.encode(), "text/markdown")}, headers=head).json()
             sid = up["id"] if "id" in up else up["source"]["id"]
             client.post(f"/api/sources/{sid}/ingest", headers=head)
-            assert client.post(f"/api/governance/sources/{sid}/approve", headers=head).status_code == 200
+            assert decide(client, sid, headers=head).status_code == 200
             ids[name] = sid
         client.post(f"/api/content/documents/{ids['payroll.md']}/comments", headers=head,
                     json={"quote": "payroll officer", "text": f"Check {SECRET} yearly."})

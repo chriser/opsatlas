@@ -196,17 +196,19 @@ def plant(core, planted: list[dict]) -> dict[str, str]:
     """The scope set's fictional documents, uploaded, ingested, approved and given their scope in the copy (REF H3)."""
     from assistant.ingestion.service import ingest_source
     from assistant.sources.service import register_upload
+    from assistant.storage import locked
     keys = {}
-    for doc in planted:
-        record = register_upload(core.state.register, doc["filename"], doc["text"].encode(), None)
-        ingest_source(core.state.register, core.state.section_store, record.id)
-        keys[doc["key"]] = record.id
-    for doc in planted:
-        scope = doc.get("scope", {})
-        core.state.register.update(keys[doc["key"]], approval_status="approved", effective_from=scope.get("effective_from"),
-                                   effective_to=scope.get("effective_to"), phases=scope.get("phases", []),
-                                   applies_to=scope.get("applies_to", []),
-                                   supersedes=[keys.get(k, k) for k in scope.get("supersedes", [])])
+    with locked(core.state.write_lock):  # planting is a job: it holds the workspace's lock, as a request does (REF S23)
+        for doc in planted:
+            record = register_upload(core.state.register, doc["filename"], doc["text"].encode(), None)
+            ingest_source(core.state.register, core.state.section_store, record.id)
+            keys[doc["key"]] = record.id
+        for doc in planted:
+            scope = doc.get("scope", {})
+            core.state.register.update(keys[doc["key"]], approval_status="approved",
+                                       effective_from=scope.get("effective_from"), effective_to=scope.get("effective_to"),
+                                       phases=scope.get("phases", []), applies_to=scope.get("applies_to", []),
+                                       supersedes=[keys.get(k, k) for k in scope.get("supersedes", [])])
     return keys
 
 

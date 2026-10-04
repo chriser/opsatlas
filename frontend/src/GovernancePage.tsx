@@ -344,12 +344,17 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
     onDrop: (event: DragEvent<HTMLTableRowElement>) => void drop(event),
   });
 
-  async function act(fn: (id: string, space?: string | null) => Promise<void>, id: string, space?: string) {
+  // An approval or rejection names the version on screen (REF S23, S8); a newer one is refused, and the list reloads.
+  async function act(fn: (id: string, sha: string, space?: string | null) => Promise<void>, s: SourceRecord, space?: string) {
     setBusy(true);
+    let refused: string | null = null;
     try {
-      await fn(id, space);
-      await refresh();
+      await fn(s.id, s.content_sha256, space);
+    } catch (e) {
+      refused = e instanceof Error ? e.message : "That decision was refused.";
     } finally {
+      await refresh();
+      if (refused) setError(refused);  // after the reload, which clears it
       setBusy(false);
     }
   }
@@ -611,12 +616,12 @@ export function GovernancePage({ onResolveWithTibi }: { onResolveWithTibi?: () =
                           Open
                         </button>
                         {s.approval_status !== "approved" ? (
-                          <button type="button" className="approve-button" disabled={busy} onClick={() => act(approveSource, s.id, space ?? undefined)}>
+                          <button type="button" className="approve-button" disabled={busy} onClick={() => act(approveSource, s, space ?? undefined)}>
                             Approve
                           </button>
                         ) : null}
                         {s.approval_status !== "rejected" ? (
-                          <button type="button" className="reject-button" disabled={busy} onClick={() => act(rejectSource, s.id, space ?? undefined)}>
+                          <button type="button" className="reject-button" disabled={busy} onClick={() => act(rejectSource, s, space ?? undefined)}>
                             Reject
                           </button>
                         ) : null}

@@ -11,6 +11,8 @@ from fastapi.testclient import TestClient
 from iam_helpers import sign_in
 from test_space_leaks import hermetic, refuse
 
+from tests.door_helpers import as_job, decide
+
 OLD = "Kestrel Ledger 2025"
 NEW = "Merlin Ledger 2026"
 
@@ -61,8 +63,8 @@ def acme(tmp_path, monkeypatch):
                              headers=head).json()
             sid = up["id"] if "id" in up else up["source"]["id"]
             client.post(f"/api/sources/{sid}/ingest", headers=head)
-            assert client.post(f"/api/governance/sources/{sid}/approve", headers=head).status_code == 200
-            core.state.register.update(sid, effective_from=start, effective_to=end)
+            assert decide(client, sid, headers=head).status_code == 200
+            as_job(core, core.state.register.update, sid, effective_from=start, effective_to=end)
             ids[key] = sid
         yield client, core, head, ids
 
@@ -91,7 +93,7 @@ def test_with_scope_on_no_path_carries_a_source_not_in_force(acme):
 def test_with_scope_on_and_nothing_excluded_the_facts_map_still_answers(acme):
     """Scope off the facts map only when it keeps something out: with every source in force, structured answers stay."""
     client, core, head, ids = acme
-    core.state.register.update(ids["old"], effective_to=None, effective_from="2025-01-01")
+    as_job(core, core.state.register.update, ids["old"], effective_to=None, effective_from="2025-01-01")
     os.environ["KP_SCOPE_EVIDENCE"] = "1"
     answer = client.post("/api/ask", json={"q": "Which system holds the returns ledger?"}, headers=head).json()
     assert answer["answer_path"] in ("oag", "rag+ontology") or any(c["citation_type"] != "document" for c in answer["citations"])

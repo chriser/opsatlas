@@ -14,6 +14,8 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..storage import NotHolding, governor, holds
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS documents (
     source_id TEXT PRIMARY KEY,
@@ -116,6 +118,16 @@ CREATE INDEX IF NOT EXISTS settled_by_source ON suggestions_settled (source_id, 
 """
 
 
+_READS = {sqlite3.SQLITE_READ, sqlite3.SQLITE_SELECT, sqlite3.SQLITE_FUNCTION, sqlite3.SQLITE_PRAGMA,
+          sqlite3.SQLITE_TRANSACTION, sqlite3.SQLITE_RECURSIVE}
+
+
+def _reads_only(action: int, *_) -> int:
+    """SQLite's authoriser for a connection opened without the workspace's lock: every statement that would change
+    the database is refused (REF S23, S7: the stores check the lock, they never take it)."""
+    return sqlite3.SQLITE_OK if action in _READS else sqlite3.SQLITE_DENY
+
+
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
@@ -126,7 +138,8 @@ class ContentStore:
         self.dir.mkdir(parents=True, exist_ok=True)
         self.assets = self.dir / "assets"
         self.path = self.dir / "content.db"
-        self.lock = threading.RLock()
+        self.lock = threading.RLock()  # this store's own sequences within one process; never the workspace's lock
+        self.governed_by = None  # the workspace's lock its writes must hold, set by the workspace (REF S23, S7)
         with self._db() as db:
             db.executescript(SCHEMA)
             columns = {row[1] for row in db.execute("PRAGMA table_info(documents)")}
@@ -141,9 +154,17 @@ class ContentStore:
         db = sqlite3.connect(self.path, timeout=10)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA secure_delete = ON")  # replaced and deleted text is overwritten, not left in the file (REF S4)
+        governed = governor(self)
+        if governed is not None and not holds(governed):  # read-only unless the request or job holds the lock (S7)
+            db.set_authorizer(_reads_only)
         try:
             yield db
             db.commit()
+        except sqlite3.DatabaseError as error:
+            if "not authorized" in str(error):
+                raise NotHolding(f"a content store write ({self.path.parent.parent.name}) without the workspace's lock "
+                                 "(REF S23, S7)") from error
+            raise
         finally:
             db.close()
 
@@ -268,6 +289,8 @@ class ContentStore:
         # Rewrite the file once the deletion is committed, so text that edits left in its free space before secure
         # deletion was switched on is gone too.
         with self.lock:
+            if governor(self) is not None and not holds(governor(self)):
+                raise NotHolding("a content store rewrite without the workspace's lock (REF S23, S7)")
             vacuum = sqlite3.connect(self.path, timeout=10, isolation_level=None)
             try:
                 vacuum.execute("VACUUM")

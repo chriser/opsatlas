@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import contextlib
 from collections.abc import Callable, Sequence
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -12,7 +11,6 @@ from ..iam.context import acting_id
 from ..iam.visibility import visible
 from ..sources.register import SourceRegister
 from ..sources.service import UploadError, register_upload
-from ..storage import lock_of, locked
 
 
 def build_sources_router(
@@ -66,15 +64,14 @@ def build_sources_router(
             last_text = register.read_content(source_id)
         except OSError:
             last_text = b""
-        # One at a time with a publish's swap (REF S23): a delete never leaves a staged version behind.
-        index = lock_of(register)
-        with locked(index) if index is not None else contextlib.nullcontext():
-            if not register.remove(source_id):
-                raise HTTPException(status_code=404, detail="Source not found.")
-            # Deletion removes everything the source left (REF S4, the Human's decision of 2 October 2026): its
-            # sections, and its drafts, versions, comments, activity and images no other document uses.
-            if section_store is not None:
-                section_store.remove_for_source(source_id)
+        # One at a time with a publish's swap, under the workspace's lock taken at the door (REF S23, S7): a delete
+        # never leaves a staged version behind.
+        if not register.remove(source_id):
+            raise HTTPException(status_code=404, detail="Source not found.")
+        # Deletion removes everything the source left (REF S4, the Human's decision of 2 October 2026): its
+        # sections, and its drafts, versions, comments, activity and images no other document uses.
+        if section_store is not None:
+            section_store.remove_for_source(source_id)
         if forget_content is not None:
             forget_content(source_id, last_text)
         if event_store is not None:

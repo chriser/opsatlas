@@ -12,6 +12,7 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import as_job
 
 PASSWORD = "content-test-pass"
 GUIDE = b"# Supplier guide\n\n## Checks\n\nCredit checks are done before the supplier is created.\n"
@@ -117,7 +118,7 @@ def test_a_draft_overtaken_by_another_edit_cannot_be_published(workspace):
     doc = client.put(f"/api/content/documents/{sid}/draft", json={"text": edit(doc["published"]["text"])}).json()
     client.post(f"/api/content/documents/{sid}/submit", json={})
     # The published text changes outside the workflow (a file restored on disk) while the draft waits.
-    register.write_content(sid, b"# Supplier guide\n\nChanged elsewhere, in place.\n")
+    as_job(register, register.write_content, sid, b"# Supplier guide\n\nChanged elsewhere, in place.\n")
     doc = client.get(f"/api/content/documents/{sid}").json()
     assert doc["draft"]["stale"]
     refused = client.post(f"/api/content/documents/{sid}/publish", json={"draft_sha": doc["draft"]["sha"]})
@@ -146,8 +147,8 @@ def test_comments_follow_their_passage_through_edits(workspace):
 
 def test_other_formats_open_read_only_and_details_are_governed(workspace):
     client, register, sections, sid = workspace
-    data = register_upload(register, "facts.json", b'{"fact": "Suppliers need contracts"}', "Facts")
-    ingest_source(register, sections, data.id)
+    data = as_job(register, register_upload, register, "facts.json", b'{"fact": "Suppliers need contracts"}', "Facts")
+    as_job(register, ingest_source, register, sections, data.id)
     doc = client.get(f"/api/content/documents/{data.id}").json()
     assert not doc["source"]["editable"] and doc["source"]["format"] == "json"
     refused = client.put(f"/api/content/documents/{data.id}/draft", json={"text": "{}"})
@@ -205,8 +206,8 @@ def test_text_helpers():
 
 def test_the_published_version_can_be_approved_or_rejected_from_the_document(workspace, tmp_path):
     client, register, sections, sid = workspace
-    pending = register_upload(register, "notes.md", b"# Notes\n\nSupplier notes for the approval test.\n", "Notes")
-    ingest_source(register, sections, pending.id)
+    pending = as_job(register, register_upload, register, "notes.md", b"# Notes\n\nSupplier notes for the approval test.\n", "Notes")
+    as_job(register, ingest_source, register, sections, pending.id)
     doc = client.get(f"/api/content/documents/{pending.id}").json()
     stale = client.post(f"/api/content/documents/{pending.id}/approve", json={"expected_sha": "old"})
     assert stale.status_code == 409 and "changed since you opened it" in stale.json()["detail"]
@@ -225,7 +226,7 @@ def test_the_published_version_can_be_approved_or_rejected_from_the_document(wor
 
 def test_documents_sit_in_groups_and_nothing_can_sit_inside_itself(workspace):
     client, register, sections, sid = workspace
-    other = register_upload(register, "notes.md", b"# Notes\n\nSome notes.\n", "Notes").id
+    other = as_job(register, register_upload, register, "notes.md", b"# Notes\n\nSome notes.\n", "Notes").id
     assert client.get("/api/content/library").json() == {"groups": [], "placements": {}}  # no starting library here
     sales = client.post("/api/content/groups", json={"title": "  Sales  "}).json()
     policies = client.post("/api/content/groups", json={"title": "Policies", "parent": f"group:{sales['id']}"}).json()
@@ -255,8 +256,8 @@ def test_documents_sit_in_groups_and_nothing_can_sit_inside_itself(workspace):
 
 def test_drag_and_drop_reorders_moves_between_groups_and_out_of_them(workspace):
     client, register, sections, sid = workspace
-    a = register_upload(register, "a.md", b"# A\n\nA.\n", "Alpha").id
-    b = register_upload(register, "b.md", b"# B\n\nB.\n", "Bravo").id
+    a = as_job(register, register_upload, register, "a.md", b"# A\n\nA.\n", "Alpha").id
+    b = as_job(register, register_upload, register, "b.md", b"# B\n\nB.\n", "Bravo").id
     one = client.post("/api/content/groups", json={"title": "One"}).json()["id"]
     two = client.post("/api/content/groups", json={"title": "Two"}).json()["id"]
     g1, g2 = f"group:{one}", f"group:{two}"
@@ -313,7 +314,7 @@ def test_renaming_a_document_changes_its_title_and_nothing_else(workspace):
 def test_suggestions_are_settled_as_corrected_accepted_or_resolved(workspace):
     client, register, sections, sid = workspace
     content = client.app.state.content
-    other = register_upload(register, "notes.md", b"# Notes\n\nSome notes.\n", "Notes").id
+    other = as_job(register, register_upload, register, "notes.md", b"# Notes\n\nSome notes.\n", "Notes").id
     kyc = {"key": "acronym:KYC", "label": "Acronym not spelled out", "text": "KYC is used without being spelled out.", "quote": "KYC"}
     style = {"key": "readability", "label": "Hard to read", "text": "3 long sentences may be hard to read."}
     link = {"key": "broken_link", "label": "Broken link", "text": "An empty link."}
@@ -371,8 +372,8 @@ def test_deleting_a_source_removes_everything_it_left(workspace, tmp_path):
     own = client.post("/api/content/assets", files={"file": ("b.png", PNG + b"own", "image/png")}).json()["url"]
     # Another document uses the first image; the deleted one uses both.
     from assistant.sources.service import register_upload
-    kept = register_upload(register, "kept.md", f"# Kept\n\n![a]({other})\n".encode(), "Kept")
-    ingest_source(register, sections, kept.id)
+    kept = as_job(register, register_upload, register, "kept.md", f"# Kept\n\n![a]({other})\n".encode(), "Kept")
+    as_job(register, ingest_source, register, sections, kept.id)
     doc = client.get(f"/api/content/documents/{sid}").json()
     text = doc["published"]["text"] + f"\n{planted} ![a]({other}) ![b]({own})\n"
     draft = client.put(f"/api/content/documents/{sid}/draft", json={"text": text}).json()

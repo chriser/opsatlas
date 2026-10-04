@@ -51,7 +51,7 @@ def make(tmp_path, generator=None, validator=None):
     record = client.post("/api/sources/upload", files={"file": ("supplier-structured.md", STRUCTURED_DOC.encode(), "text/markdown")},
                          data={"title": "Supplier Setup"}).json()
     client.post(f"/api/sources/{record['id']}/ingest")
-    client.post(f"/api/governance/sources/{record['id']}/approve")
+    client.post(f"/api/governance/sources/{record['id']}/approve", json={"sha": record["content_sha256"]})
     return client, gen, trace
 
 

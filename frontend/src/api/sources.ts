@@ -51,14 +51,26 @@ export async function deleteSource(id: string): Promise<void> {
   if (!res.ok) throw new Error("delete failed");
 }
 
-export async function approveSource(id: string, space?: string | null): Promise<void> {
-  const res = await guard(await fetch(`/api/governance/sources/${id}/approve`, { method: "POST", headers: authHeaders(space) }));
-  if (!res.ok) throw new Error("approve failed");
+// An approval or rejection names the version the reviewer saw (REF S23, S8): its text's SHA-256. If the document
+// changed since, the decision is refused (409) and the page shows the current version to review again.
+async function decide(id: string, sha: string, verb: "approve" | "reject", space?: string | null): Promise<void> {
+  const res = await guard(await fetch(`/api/governance/sources/${id}/${verb}`, {
+    method: "POST",
+    headers: { ...authHeaders(space), "Content-Type": "application/json" },
+    body: JSON.stringify({ sha }),
+  }));
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? `${verb} failed`);
+  }
 }
 
-export async function rejectSource(id: string, space?: string | null): Promise<void> {
-  const res = await guard(await fetch(`/api/governance/sources/${id}/reject`, { method: "POST", headers: authHeaders(space) }));
-  if (!res.ok) throw new Error("reject failed");
+export async function approveSource(id: string, sha: string, space?: string | null): Promise<void> {
+  return decide(id, sha, "approve", space);
+}
+
+export async function rejectSource(id: string, sha: string, space?: string | null): Promise<void> {
+  return decide(id, sha, "reject", space);
 }
 
 export async function ingestSource(id: string): Promise<SourceRecord> {

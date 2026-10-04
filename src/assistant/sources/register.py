@@ -14,7 +14,7 @@ import os
 import threading
 from pathlib import Path
 
-from ..storage import atomic_write_bytes, lock_of, locked, write_json
+from ..storage import LockBusy, atomic_write_bytes, governor, if_free, write_json, writes
 from .models import SourceRecord
 
 
@@ -32,7 +32,7 @@ class SourceRegister:
         self.files_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
         self.on_add: list = []  # called with each new record once it is stored (REF S18: its first version)
-        self.lock_path = None  # the workspace's one lock when this register belongs to one (REF S23, S7)
+        self.governed_by = None  # the workspace's lock its writes must hold, set by the workspace (REF S23, S7)
 
     def _read_index(self) -> list[dict]:
         if not self.index_file.exists():
@@ -40,6 +40,7 @@ class SourceRegister:
         text = self.index_file.read_text() or "[]"
         return json.loads(text)
 
+    @writes
     def _write_index(self, rows: list[dict]) -> None:
         write_json(self.index_file, rows, indent=2)
 
@@ -64,7 +65,7 @@ class SourceRegister:
                 record = self.get(source_id)
                 if record is not None:
                     try:  # a reader never waits
-                        self.promote_if_committed(source_id, record.content_sha256, blocking=False)
+                        self.promote_if_committed(source_id, record.content_sha256)
                     except OSError:  # busy: a committed version is read where it is staged, else the live file
                         committed = self._committed_staged(source_id, record.content_sha256)
                         if committed is not None:
@@ -75,7 +76,7 @@ class SourceRegister:
             return content
         if self.MOVE_ON_READ:
             try:
-                moved = self.promote_if_committed(source_id, sha, blocking=False)
+                moved = self.promote_if_committed(source_id, sha)
             except OSError:  # busy or not movable just now: the reader is told so, and the next one tries again
                 raise ContentReplaced(source_id) from None
             if moved:
@@ -120,14 +121,17 @@ class SourceRegister:
                 record = fresh
         return record, self.read_content(source_id)
 
-    def promote_if_committed(self, source_id: str, sha: str, blocking: bool = True) -> bool:
-        """Move the staged text into place if the record names it (its SHA-256 is ``sha``); whether it was moved. One
-        writer per space (REF S23, S7): under the space's lock, the record and the staged file are checked again, since a
-        writer may have settled this version and staged the next one meanwhile."""
+    def promote_if_committed(self, source_id: str, sha: str) -> bool:
+        """Move the staged text into place if the record names it (its SHA-256 is ``sha``); whether it was moved. A
+        writer holds the workspace's lock already; a reader only tries it, and LockBusy tells it a writer is busy (REF
+        S23, S7). Under the lock the record and the staged file are checked again, since a writer may have settled this
+        version and staged the next one meanwhile."""
         staged = self._staged_path(source_id)
         if not staged.exists():
             return False
-        with locked(lock_of(self), blocking=blocking):
+        with if_free(governor(self)) as free:
+            if not free:
+                raise LockBusy(source_id)
             record = self.get(source_id)
             if record is None or record.content_sha256 != sha or not staged.exists() \
                     or hashlib.sha256(staged.read_bytes()).hexdigest() != sha:
@@ -138,11 +142,13 @@ class SourceRegister:
     def _staged_path(self, source_id: str) -> Path:
         return self.files_dir / f"{source_id}.staged"
 
+    @writes
     def stage_content(self, source_id: str, content: bytes) -> None:
         """A new version's text, beside the live one; nothing reads it until its record names it (REF S23)."""
         self.files_dir.mkdir(parents=True, exist_ok=True)
         atomic_write_bytes(self._staged_path(source_id), content)
 
+    @writes
     def promote_content(self, source_id: str) -> None:
         """Move a staged text into place (one atomic rename); nothing to do if it already was."""
         try:
@@ -150,14 +156,17 @@ class SourceRegister:
         except FileNotFoundError:
             pass
 
+    @writes
     def discard_staged_content(self, source_id: str) -> None:
         self._staged_path(source_id).unlink(missing_ok=True)
 
+    @writes
     def write_content(self, source_id: str, content: bytes) -> None:
         with self._lock:
             self.files_dir.mkdir(parents=True, exist_ok=True)
             atomic_write_bytes(self.file_path(source_id), content)  # a reader never finds half a file (REF S23)
 
+    @writes
     def update(self, source_id: str, **fields) -> SourceRecord | None:
         with self._lock:
             rows = self._read_index()
@@ -168,6 +177,7 @@ class SourceRegister:
                     return SourceRecord(**row)
             return None
 
+    @writes
     def add(self, record: SourceRecord, content: bytes) -> SourceRecord:
         with self._lock:
             self.files_dir.mkdir(parents=True, exist_ok=True)  # resilient if storage was cleared
@@ -179,6 +189,7 @@ class SourceRegister:
             listener(record)
         return record
 
+    @writes
     def remove(self, source_id: str) -> bool:
         with self._lock:
             rows = self._read_index()

@@ -1,5 +1,8 @@
 """Red team, round 7, on REF S23 (staged publish) at d6413d4: S7 (one writer per workspace; reading never waits).
 
+The stop rule applied after this round; the Human chose the door (lock at the door, check in the stores). These tests
+now pass as written or restated for it (each restatement says so).
+
 Hermetic: the full Sales app on a temporary workspace, sockets refused, models faked. Every thread is a daemon thread
 and every join has a timeout, so no test can hang.
 """
@@ -12,10 +15,9 @@ import time
 
 import pytest
 
+from tests.door_helpers import as_job, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
-
-pytestmark = pytest.mark.xfail(strict=True, reason="REF S23 round 7: stop rule; awaiting the Human's design decision")
 
 
 @pytest.fixture
@@ -58,9 +60,10 @@ def _acme_document(app, text=b"# Pricing\n\nAlpha is the first plan.\n"):
     from assistant.sources.service import register_upload
     core = app.state.cores["acme"]
     register, sections = core.state.register, core.state.section_store
-    record = register_upload(register, "pricing.md", text, "Pricing")
-    ingest_source(register, sections, record.id)
-    register.update(record.id, approval_status="approved")
+    with writing(core):  # set-up is a job (REF S23, the door)
+        record = register_upload(register, "pricing.md", text, "Pricing")
+        ingest_source(register, sections, record.id)
+        register.update(record.id, approval_status="approved")
     return core, record.id
 
 
@@ -121,15 +124,20 @@ def test_s23_round7_content_list_read_holds_the_workspace_lock_against_writers(s
 
 
 def test_s23_round7_draft_change_is_written_while_another_writer_holds_the_lock(sales):
-    """S7: "every change to the content store ... runs under the workspace's one lock". Discarding a draft writes the
-    content store (documents row cleared) while another thread holds the workspace lock."""
+    """S7: "every change to the content store ... runs under the workspace's one lock". Restated for the door (REF S23,
+    the Human's decision after round 7): discarding a draft is a request; it waits at the door while another writer
+    holds the workspace's lock, and goes in once the lock is free."""
     app, client, root = sales
     core, source_id = _acme_document(app)
     content = core.state.content
-    content.save_draft(source_id, "# Pricing\n\nBeta is the first plan.\n")
+    with writing(core):
+        content.save_draft(source_id, "# Pricing\n\nBeta is the first plan.\n")
     assert content.store.document(source_id)["draft_text"] is not None
     release, holder = _hold_workspace_lock(root)
-    worker = threading.Thread(target=content.discard_draft, args=(source_id,), daemon=True)
+    out = {}
+    worker = threading.Thread(target=lambda: out.setdefault(
+        "status", client.delete(f"/api/content/documents/{source_id}/draft", headers={"X-OpsAtlas-Space": "acme"}).status_code),
+        daemon=True)
     worker.start()
     changed_while_held = False
     deadline = time.monotonic() + 2
@@ -142,59 +150,53 @@ def test_s23_round7_draft_change_is_written_while_another_writer_holds_the_lock(
     holder.join(5)
     worker.join(10)
     assert not changed_while_held, "the content store was changed while another writer held the workspace lock"
+    assert out.get("status") == 200 and (content.store.document(source_id) or {}).get("draft_text") is None
 
 
 def test_s23_round7_a_draft_saved_during_a_publish_is_wiped_by_it(sales):
-    """S7 consequence: an author's draft save runs outside the lock, so it lands inside an approver's publish (here
-    paused on a slow event store, a dependency slow) and the publish's clear_draft then silently discards it."""
+    """S7 consequence: an author's draft save landed inside an approver's publish and the publish's clear_draft then
+    silently discarded it. Restated for the door (REF S23): the author's save is a request and the publish a job, so
+    one runs after the other. Whichever goes first, the author's draft is never silently lost: either it is kept (the
+    publish refuses a draft returned to editing) or the publish names the draft it published."""
     app, client, root = sales
     core, source_id = _acme_document(app)
     content = core.state.content
-    content.save_draft(source_id, "# Pricing\n\nBeta is the first plan.\n")
-    content.submit(source_id)
+    with writing(core):
+        content.save_draft(source_id, "# Pricing\n\nBeta is the first plan.\n")
+        content.submit(source_id)
     draft_sha = content.store.document(source_id)["draft_sha"]
-    in_event, finish_event = threading.Event(), threading.Event()
-    events = content.events
-
-    class SlowEvents:
-        def record(self, event_type, *args, **kwargs):
-            if event_type == "source_edited" and threading.current_thread().name == "approver":
-                in_event.set()
-                finish_event.wait(10)
-            return events.record(event_type, *args, **kwargs) if events is not None else None
-
-        def __getattr__(self, name):
-            return getattr(events, name)
-    content.events = SlowEvents()
-    results = {}
-
-    def approver():
-        results["publish"] = content.publish(source_id, draft_sha)
     gamma = "# Pricing\n\nGamma is the first plan.\n"
     at_write, go_write = threading.Event(), threading.Event()
     save_document = content.store.save_document
 
     def paced_save_document(*args, **kwargs):  # the author's request is between its log and its write
-        if threading.current_thread().name == "author":
+        if kwargs.get("draft_text") == gamma:
             at_write.set()
             go_write.wait(10)
         return save_document(*args, **kwargs)
     content.store.save_document = paced_save_document
-    b = threading.Thread(target=content.save_draft, args=(source_id, gamma), name="author", daemon=True)
-    b.start()
+    results = {}
+    author = threading.Thread(target=lambda: results.setdefault("author", client.put(
+        f"/api/content/documents/{source_id}/draft", json={"text": gamma}, headers={"X-OpsAtlas-Space": "acme"}).status_code),
+        daemon=True)
+    author.start()
     assert at_write.wait(10), "the author's save never reached its write"
-    a = threading.Thread(target=approver, name="approver", daemon=True)
+
+    def approver():
+        try:
+            results["publish"] = as_job(core, content.publish, source_id, draft_sha)
+        except Exception as error:  # refused: the draft it was asked to publish is no longer the submitted one
+            results["refused"] = str(error)
+    a = threading.Thread(target=approver, daemon=True)
     a.start()
-    assert in_event.wait(10), "the publish never reached its edit event"
-    go_write.set()  # the author's draft is written now, inside the approver's publish (it needs no lock)
-    deadline = time.monotonic() + 3
-    while time.monotonic() < deadline and (content.store.document(source_id) or {}).get("draft_text") != gamma:
-        time.sleep(0.05)
-    finish_event.set()
+    time.sleep(0.5)
+    assert "publish" not in results and "refused" not in results, "the publish ran inside the author's request"
+    go_write.set()
+    author.join(10)
     a.join(10)
-    b.join(10)
-    content.events = events
     content.store.save_document = save_document
-    assert "publish" in results, "the publish did not finish"
-    assert (content.store.document(source_id) or {}).get("draft_text") == gamma, \
-        "the author's draft, saved while the publish held the lock, was discarded by the publish"
+    assert results.get("author") == 200
+    state = content.store.document(source_id) or {}
+    published = content.published_text(core.state.register.get(source_id))
+    assert state.get("draft_text") == gamma or published == gamma, \
+        "the author's draft, saved while the publish waited, was discarded by the publish"
