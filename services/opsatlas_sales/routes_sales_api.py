@@ -227,13 +227,6 @@ def build_sales_api_router(app, *, principals, knowledge, ontology, desk, regist
         except ValueError as exc:
             raise HTTPException(409, str(exc)) from exc
 
-    @router.get('/api/sales/source/{identifier}', dependencies=[reads])
-    def source(identifier: str, request: Request):
-        record, text = app.state.family_register.read_record_text(identifier)  # read together (REF S23)
-        if not record:
-            raise HTTPException(404)
-        return {'title': record.title, 'text': text.decode('utf-8')}
-
     @router.post('/api/sales/proposals', dependencies=[proposes_record])
     async def propose(request: Request):
         try:

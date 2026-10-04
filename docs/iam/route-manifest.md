@@ -201,7 +201,6 @@
 | GET | `/api/sales/ontology` | service | service principal with `sales.read` (REF S12) |
 | POST | `/api/sales/proposals` | service | service principal with `sales.proposals.create` (REF S12) |
 | POST | `/api/sales/search` | service | service principal with `sales.read` (REF S12) |
-| GET | `/api/sales/source/{identifier}` | service | service principal with `sales.read` (REF S12) |
 | GET | `/api/sales/spoken` | service | service principal with `sales.read` (REF S12) |
 | POST | `/api/sales/spoken` | service | service principal with `sales.spoken.propose` (REF S12) |
 | POST | `/api/services/restart` | human | `platform.services.restart` |

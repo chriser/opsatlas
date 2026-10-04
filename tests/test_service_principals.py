@@ -12,7 +12,7 @@ from iam_helpers import sign_in
 
 from assistant.api.access import manifest
 
-SERVICE_ROUTES_EXPECTED = 12
+SERVICE_ROUTES_EXPECTED = 11  # 12 until Bug #2192 removed the unused GET /api/sales/source/{identifier}
 
 
 @pytest.fixture
