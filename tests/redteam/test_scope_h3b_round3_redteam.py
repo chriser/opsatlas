@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from iam_helpers import sign_in  # noqa: E402
 from test_space_leaks import hermetic, refuse  # noqa: E402
 
-from tests.door_helpers import as_job, decide, writing
+from tests.door_helpers import as_job, decide, decided, writing
 
 HEAD = {"X-OpsAtlas-Space": "acme"}
 QUESTION = "How does the returns desk refund a parcel?"
@@ -242,7 +242,7 @@ def test_scope_h3b_round3_superseding_source_withdrawn_while_prepared_is_given(a
         core.state.register.update(new, supersedes=[old])
 
     def withdraw(_call):
-        as_job(core, core.state.register.update, new, approval_status="pending")
+        as_job(core, decided, core.state.register, new, approval_status="pending")
     core.state.answer.generator = Echo(withdraw)
     body = ask(client)
     assert "PARCELBOOK-OLD" not in body.get("answer", "") and given(body, "TOTELEDGER-NEW")

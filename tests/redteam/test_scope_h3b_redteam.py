@@ -7,7 +7,7 @@ import socket
 
 import pytest
 
-from tests.door_helpers import as_job, decide, writing
+from tests.door_helpers import as_job, decide, decided, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -51,7 +51,7 @@ def env(tmp_path, monkeypatch):
                 assert decide(client, sid, headers=HEAD).status_code == 200
             if scope:
                 with writing(core):  # set-up is a job (REF S23, the door)
-                    core.state.register.update(sid, **scope)
+                    decided(core.state.register, sid, **scope)
             return sid
 
         def ask(q: str) -> dict:
@@ -152,7 +152,7 @@ def test_supersede_approved_mid_answer_lets_replaced_source_answer(env, monkeypa
     class Racing(service.ScopeFilter):
         def __init__(self, *a, **k):
             super().__init__(*a, **k)
-            as_job(core, core.state.register.update, new, approval_status="approved")  # the approval lands now
+            as_job(core, decided, core.state.register, new, approval_status="approved")  # the approval lands now
 
     monkeypatch.setattr(service, "ScopeFilter", Racing)
     answer = ask("What is the refund window for returns?")

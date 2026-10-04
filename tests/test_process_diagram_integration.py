@@ -13,6 +13,7 @@ from assistant.process.maps import build_process_map
 from assistant.process.registry import ProcessRegistry
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 
 def test_from_env_tolerates_invalid_timeout(monkeypatch):
@@ -97,7 +98,7 @@ def _seed(tmp_path):
     store = SectionStore(register.base_dir)
     record = register_upload(register, "supplier.md", PACK.encode(), title="Supplier setup")
     ingest_source(register, store, record.id)
-    register.update(record.id, approval_status="approved")
+    decided(register, record.id, approval_status="approved")
     registry = ProcessRegistry(register.base_dir)
     registry.build_from_sources(register)
     return register, registry, record

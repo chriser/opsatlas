@@ -189,7 +189,9 @@ export const saveDraft = (id: string, text: string, baseSha?: string) =>
   apiRequest<ContentDocument>("PUT", `${base(id)}/draft`, { text, base_sha: baseSha ?? null });
 export const discardDraft = (id: string) => apiRequest<ContentDocument>("DELETE", `${base(id)}/draft`);
 export const submitDraft = (id: string, note: string) => apiRequest<ContentDocument>("POST", `${base(id)}/submit`, { note });
-export const returnDraft = (id: string, note = "") => apiRequest<ContentDocument>("POST", `${base(id)}/return`, { note });
+// A return names the draft returned (REF S23, S8): a newer draft is refused (409) and the page reloads it.
+export const returnDraft = (id: string, draftSha: string, note = "") =>
+  apiRequest<ContentDocument>("POST", `${base(id)}/return`, { draft_sha: draftSha, note });
 export const publishDraft = (id: string, draftSha: string, note: string) =>
   apiRequest<PublishResult>("POST", `${base(id)}/publish`, { draft_sha: draftSha, note });
 export const approveDocument = (id: string, expectedSha: string) =>

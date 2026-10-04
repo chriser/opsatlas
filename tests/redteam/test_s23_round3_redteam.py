@@ -18,7 +18,7 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.register import ContentReplaced, SourceRegister
 from assistant.sources.service import register_upload
-from tests.door_helpers import as_job, writing
+from tests.door_helpers import as_job, decided, writing
 
 BODY = "The supervisor signs the handover log at 06:00 each day and checks the gate seals.\n"
 A = "# Shift handover\n\n" + BODY
@@ -50,7 +50,7 @@ def _setup(tmp_path, *, approve=True, events=None, fail_first_history_write=Fals
         record = register_upload(reg, "handover.md", A.encode())
     ingest_source(reg, sections, record.id)
     if approve:
-        reg.update(record.id, approval_status="approved")
+        decided(reg, record.id, approval_status="approved")
     return reg, sections, content, record.id
 
 

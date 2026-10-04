@@ -42,3 +42,13 @@ def decide(client, source_id: str, headers: dict | None = None, verb: str = "app
     rows = client.get("/api/sources", headers=headers).json()
     sha = next((r["content_sha256"] for r in rows if r["id"] == source_id), "0" * 64)
     return client.post(f"/api/governance/sources/{source_id}/{verb}", json={"sha": sha}, headers=headers)
+
+
+def decided(register, source_id: str, approval_status: str | None = None, **fields):
+    """Set-up that changes a document's approval: through the register's decide, naming the record's current text (REF
+    S23, S8: the register refuses any other change of approval). Other fields are a plain update, written first."""
+    if fields:
+        register.update(source_id, **fields)
+    if approval_status is not None:
+        register.decide(source_id, approval_status, register.get(source_id).content_sha256)
+    return register.get(source_id)

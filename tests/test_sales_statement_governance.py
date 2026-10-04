@@ -15,6 +15,7 @@ from services.opsatlas_sales.governance import GovernanceDesk
 from services.opsatlas_sales.knowledge import Knowledge
 from services.opsatlas_sales.statement_governance import SalesStatementReview
 from services.opsatlas_sales.workspace import workspace
+from tests.door_helpers import decided
 
 
 class Embedder:
@@ -77,13 +78,13 @@ def sales(tmp_path):
     paper_text = b'# 3.2 Walkthrough\n\nEvery record is approved by a person before Tibi uses it in an answer.\n'
     paper = register_upload(register, 'paper.md', paper_text, 'DT603 Part A, section 3.2')
     ingest_source(register, sections, paper.id)
-    register.update(paper.id, approval_status='approved')
+    decided(register, paper.id, approval_status='approved')
     rows = []
     for identifier, title, status, contributor, text in RECORDS:
         source = register_upload(register, identifier + '.md', f'# {title}\n\n{text}\n'.encode(), title)
         ingest_source(register, sections, source.id)
         # Seeded records are approved; a contributed claim waits for the Human.
-        register.update(source.id, approval_status='pending' if contributor else 'approved')
+        decided(register, source.id, approval_status='pending' if contributor else 'approved')
         rows.append({'id': identifier, 'title': title, 'text': text, 'status': status, 'topics': [identifier], 'source_id': source.id,
                      'sha256': 'x', 'references': [{'path': 'paper:03-2.md', 'source_id': paper.id, 'sha256': 'y'}]
                      if identifier == 'governance' else [], 'versions': [],
@@ -91,7 +92,7 @@ def sales(tmp_path):
     conversation = register_upload(register, 'style.md', b'# Tibi style\n\nTibi does not support crude jokes or single sign-on talk.\n',
                                    'Tibi style')
     ingest_source(register, sections, conversation.id)
-    register.update(conversation.id, approval_status='approved')
+    decided(register, conversation.id, approval_status='approved')
     rows.append({'id': 'style', 'title': 'Tibi style', 'text': 'x', 'status': 'available', 'kind': 'conversation', 'topics': [],
                  'source_id': conversation.id, 'sha256': 'x', 'references': [], 'versions': []})
     (register.base_dir / 'sales-records.json').write_text(json.dumps(rows))
@@ -167,7 +168,7 @@ def test_an_old_decision_is_not_applied_to_a_record_corrected_since(sales):
     claim['sha256'] = hashlib.sha256(body).hexdigest()
     knowledge._save(rows)
     register.write_content(claim['source_id'], body)
-    register.update(claim['source_id'], content_sha256=claim['sha256'], version=2, approval_status='approved')
+    decided(register, claim['source_id'], content_sha256=claim['sha256'], version=2, approval_status='approved')
     ingest_source(register, desk.sections, claim['source_id'])
     # The finding was about the old wording: it no longer stands.
     assert not any(f['relation'] == 'conflict' for f in desk.statements.findings())
@@ -184,7 +185,7 @@ def test_a_withdrawn_or_deleted_record_also_stops_an_old_decision(sales):
     desk, register, knowledge, _, _ = sales
     answer = _supersede(desk)
     security = next(r for r in knowledge.records() if r['id'] == 'security')
-    register.update(security['source_id'], approval_status='rejected')
+    decided(register, security['source_id'], approval_status='rejected')
     with pytest.raises(ValueError, match='changed after it was proposed'):
         desk.review(answer['id'], answer['text_sha256'], True)
     claim = next(r for r in knowledge.records() if r['id'] == 'sso-claim')
@@ -269,7 +270,7 @@ def test_changes_during_a_review_are_reviewed_by_one_follow_up_run(sales):
     desk.statements.start()
     started.wait(5)
     claim = next(r for r in knowledge.records() if r['id'] == 'sso-claim')
-    register.update(claim['source_id'], approval_status='approved')  # a change arriving mid-review
+    decided(register, claim['source_id'], approval_status='approved')  # a change arriving mid-review
     for _ in range(3):
         assert desk.statements.start()['queued']
     release.set()
@@ -330,7 +331,7 @@ def test_the_proof_of_concept_and_a_real_deployment_are_never_judged_against_eac
     text = 'A real deployment does not support single sign-on with a corporate directory today.'
     source = register_upload(register, 'real-deployment.md', f'# Real deployment\n\n{text}\n'.encode(), 'Real deployment')
     ingest_source(register, desk.sections, source.id)
-    register.update(source.id, approval_status='approved')
+    decided(register, source.id, approval_status='approved')
     rows.append({'id': 'real-deployment', 'title': 'Real deployment', 'text': text, 'status': 'planned', 'topics': [],
                  'source_id': source.id, 'sha256': 'x', 'references': [], 'versions': []})
     # A claim filed under the real-deployment topic that speaks about the proof of concept is scoped by its own words.
@@ -360,7 +361,7 @@ def test_a_withdrawal_goes_through_the_audited_action_so_the_facts_map_is_rebuil
 
         def execute(self, name, params, actor):
             self.calls.append((name, params['source_id'], actor.type))
-            register.update(params['source_id'], approval_status='rejected' if name == 'reject_source' else 'approved')
+            decided(register, params['source_id'], approval_status='rejected' if name == 'reject_source' else 'approved')
             return type('Result', (), {'outcome': 'ok', 'message': ''})()
 
     knowledge.actions = Recorder()

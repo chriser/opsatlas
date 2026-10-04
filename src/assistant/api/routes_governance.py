@@ -25,14 +25,8 @@ from ..iam.visibility import visible
 from ..ingestion.store import SectionStore
 from ..ontology.actions import ActionContext, ActionExecutionResult, ActionsEngine, ValidationResult, acting_person
 from ..regulatory.review import RegulatoryReviewStore
-from ..sources.register import SourceRegister
+from ..sources.register import SourceRegister, TextNotNamed
 from .access import current_actor, need
-
-
-def names_current(record, named: str | None) -> bool:
-    """Whether a decision names the record's current text (REF S23, S8): its SHA-256. Every approval and rejection
-    names one, a withdrawal by the workspace included (red team round 8)."""
-    return named is not None and record is not None and record.content_sha256 == named
 
 
 class Decision(BaseModel):
@@ -103,12 +97,12 @@ def build_governance_router(
         return ValidationResult(rule="source_exists", passed=False, message="Source not found.")
 
     def _validate_names_current_text(context: ActionContext) -> ValidationResult:
-        """An approval names the text it approves (REF S23, S8): the record's text must still be that one. Checked under
-        the workspace's lock, taken at the door, so no new version can land between this check and the decision."""
-        if names_current(register.get(str(context.params.get("source_id", ""))), context.params.get("sha")):
+        """An early answer from the register's own check (REF S23, S8): the decision is refused here with a reason the
+        caller can show; the register's decide checks the same again when it writes, and that is the one that counts."""
+        reason = register.names_text(str(context.params.get("source_id", "")), context.params.get("sha"))
+        if reason is None:
             return ValidationResult(rule="names_current_text", passed=True, message="The text named is the current one.")
-        return ValidationResult(rule="names_current_text", passed=False,
-                                message="The document changed since it was read; review the current version.")
+        return ValidationResult(rule="names_current_text", passed=False, message=f"{reason}.")
 
     def _validate_not_already_approved(context: ActionContext) -> ValidationResult:
         record = register.get(str(context.params.get("source_id", "")))
@@ -142,11 +136,11 @@ def build_governance_router(
         return ValidationResult(rule="non_empty_text", passed=False, message="Document text cannot be empty.")
 
     def _approve_source_action(context: ActionContext) -> dict:
-        response = _set_status(register, str(context.params["source_id"]), "approved")
+        response = _set_status(register, str(context.params["source_id"]), "approved", sha=context.params.get("sha"))
         return {"response": response, "analytics_event": _source_status_event(response, "approved")}
 
     def _reject_source_action(context: ActionContext) -> dict:
-        response = _set_status(register, str(context.params["source_id"]), "rejected")
+        response = _set_status(register, str(context.params["source_id"]), "rejected", sha=context.params.get("sha"))
         return {"response": response, "analytics_event": _source_status_event(response, "rejected")}
 
     def _accept_issue_action(context: ActionContext) -> dict:
@@ -267,20 +261,12 @@ def build_governance_router(
             docs.append({"id": rec.id, "title": rec.title, "text": text.decode("utf-8", "replace")})
         return suggest_remediation(docs[0], docs[1])
 
-    def _names_current(source_id: str, named: str) -> None:
-        record = register.get(source_id)
-        if record is None:
-            raise HTTPException(status_code=404, detail="Source not found.")
-        if not names_current(record, named):  # REF S23, S8: an approval of a text nobody read is refused
-            raise HTTPException(status_code=409, detail="The document changed since it was read; review the current version.")
-
     @router.post("/sources/{source_id}/approve", dependencies=[need("documents.approve")])
     def approve(source_id: str, decision: Decision) -> dict:
         action_response = _execute_operator_action("approve_source", {"source_id": source_id, "sha": decision.sha})
         if action_response is not None:
             return action_response
-        _names_current(source_id, decision.sha)
-        result = _set_status(register, source_id, "approved", event_store=event_store)
+        result = _set_status(register, source_id, "approved", event_store=event_store, sha=decision.sha)
         _refresh_process_registry()
         return result
 
@@ -289,8 +275,7 @@ def build_governance_router(
         action_response = _execute_operator_action("reject_source", {"source_id": source_id, "sha": decision.sha})
         if action_response is not None:
             return action_response
-        _names_current(source_id, decision.sha)
-        result = _set_status(register, source_id, "rejected", event_store=event_store)
+        result = _set_status(register, source_id, "rejected", event_store=event_store, sha=decision.sha)
         _refresh_process_registry()
         return result
 
@@ -338,10 +323,16 @@ def _visible_review(result: InternalReviewResult) -> dict:
     return data
 
 
-def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None) -> dict:
-    record = register.update(source_id, approval_status=status)  # under the workspace's lock, taken at the door (S7)
-    if record is None:
+def _set_status(register: SourceRegister, source_id: str, status: str, event_store: AnalyticsEventStore | None = None,
+                sha: str | None = None) -> dict:
+    """A decision through the register's decide (REF S23, S8): it names the text decided on, under the workspace's lock
+    taken at the door (S7)."""
+    if register.get(source_id) is None:
         raise HTTPException(status_code=404, detail="Source not found.")
+    try:
+        record = register.decide(source_id, status, sha)
+    except TextNotNamed as refused:
+        raise HTTPException(status_code=409, detail=f"{refused}.") from None
     if event_store is not None:
         event_store.record(**_source_status_event(record.model_dump(), status))
     return record.model_dump()

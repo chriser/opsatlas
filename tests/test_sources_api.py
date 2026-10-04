@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from assistant.api.app import create_app
 from assistant.api.auth import AuthService
 from assistant.sources.register import SourceRegister
-from tests.door_helpers import as_job
+from tests.door_helpers import as_job, decided
 
 TEST_PASSWORD = "test-pass"
 
@@ -89,7 +89,7 @@ def test_deleting_a_source_takes_its_facts_out_of_the_map(tmp_path):
     assert response.status_code == 200, response.text
     source_id = response.json()["id"]
     register = client.app.state.register
-    as_job(register, register.update, source_id, approval_status="approved")
+    as_job(register, decided, register, source_id, approval_status="approved")
     client.app.state.rebuild_ontology()
     assert client.app.state.ontology.get(ontology_id("source", source_id)) is not None
     assert client.delete(f"/api/sources/{source_id}").status_code == 200

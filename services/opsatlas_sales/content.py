@@ -84,10 +84,11 @@ def attach(content, knowledge, desk, library=True) -> None:
         rows = knowledge.records()
         row = record_of(source.id, rows)
         if row is None:
-            # What the document said before, so publishing can tell a reworded document from a reformatted one.
+            # What the document said before, so publishing can tell a reworded document from a reformatted one: the
+            # record's own text, never a file replaced in its place; unknown (taken as reworded) when it is not there.
             try:
-                previous = knowledge.register.read_content(source.id).decode("utf-8", "replace")
-            except OSError:
+                previous = content.record_text(source)
+            except (ContentError, OSError):
                 previous = None
             return (text if text.endswith("\n") else text + "\n").encode(), {"record": None, "previous": previous}
         if block := knowledge.review_block(row, rows):

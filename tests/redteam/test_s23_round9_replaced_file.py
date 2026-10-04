@@ -13,8 +13,6 @@ from fastapi.testclient import TestClient
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
-PENDING = pytest.mark.xfail(strict=True, reason="REF S23 round 9: the stop rule on approvals; awaiting the Human's design decision")
-
 HEAD = {"X-OpsAtlas-Space": "acme"}
 ORIGINAL = "# Pricing guide\n\nThe Acme plan costs ten pounds a month.\n\nIt includes support.\n"
 REPLACED = "# Pricing guide\n\nThe Acme plan is free for everyone, forever.\n\nIt includes support.\n"
@@ -69,7 +67,6 @@ def test_s23_round9_control_content_route_refuses_replaced_file(acme):
     assert _status(client, sid) == before
 
 
-@PENDING
 def test_s23_round9_governance_route_approves_replaced_file(acme):
     """S8: the governance page's approve, naming the record's SHA-256 as the page does (s.content_sha256), approves a
     document whose file was replaced on disk. The reviewer read the replaced file (the governance document view
@@ -85,7 +82,6 @@ def test_s23_round9_governance_route_approves_replaced_file(acme):
     assert _status(client, sid) == before
 
 
-@PENDING
 def test_s23_round9_governance_route_rejects_replaced_file(acme):
     """S8: the same for a rejection."""
     client, core, sid = acme
@@ -96,7 +92,6 @@ def test_s23_round9_governance_route_rejects_replaced_file(acme):
     assert _status(client, sid) == before
 
 
-@PENDING
 def test_s23_round9_actions_route_approves_replaced_file(acme):
     """S8: the declared approve_source action, run through the ontology actions route, checks only the record's
     SHA-256 (names_current_text), so it approves a replaced file too."""

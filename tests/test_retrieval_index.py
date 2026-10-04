@@ -1,5 +1,6 @@
 """The in-memory search index (ARCH F7): the same results as the search it replaces, rebuilt only when the corpus
 changes, an embedder that was down retried, and an embeddings cache that no longer grows for ever."""
+import hashlib
 import math
 import random
 import threading
@@ -13,6 +14,7 @@ from assistant.retrieval.index import cosine, tokenize
 from assistant.retrieval.service import RetrievalService
 from assistant.sources.models import SourceRecord
 from assistant.sources.register import SourceRegister
+from tests.door_helpers import decided
 
 WORDS = "supplier onboarding credit check approval invoice payment dispute return warehouse pick pack ship customer contract".split()
 
@@ -65,10 +67,12 @@ def corpus(tmp_path, sources=6, sections=8, seed=1):
     register = SourceRegister(tmp_path)
     store = SectionStore(register.base_dir)
     for i in range(sources):
-        record = SourceRecord(id=f"s{i}", filename=f"s{i}.md", title=f"Source {i}", size_bytes=1, content_sha256=f"{i:064x}",
+        body = f"# x{i}".encode()  # a real fingerprint: an approval names its text (REF S23, S8)
+        record = SourceRecord(id=f"s{i}", filename=f"s{i}.md", title=f"Source {i}", size_bytes=1,
+                              content_sha256=hashlib.sha256(body).hexdigest(),
                               created_at="2026-09-30T00:00:00+00:00", approval_status="approved" if i % 3 else "pending",
                               processing_state="ingested", section_count=sections)
-        register.add(record, b"# x")
+        register.add(record, body)
         texts = [" ".join(rng.choice(WORDS) for _ in range(12)) for _ in range(sections)]
         store.replace_for_source(record.id, [
             Section(source_id=record.id, ordinal=n, heading=f"H{n}", text=text, char_count=len(text)) for n, text in enumerate(texts)])
@@ -100,7 +104,7 @@ def test_the_index_is_built_once_and_again_only_when_the_corpus_changes(tmp_path
     register.add(record, b"# new")
     store.replace_for_source("new", [Section(source_id="new", ordinal=0, heading="H", text="a brand new credit check rule", char_count=29)])
     assert any(r.source_id == "new" for r in service.search("brand new credit check rule")[0]) and service.index.builds == 2
-    register.update("s0", approval_status="approved")
+    decided(register, "s0", approval_status="approved")
     service.search("credit check")
     assert service.index.builds == 3
     register.update("new", version=2, section_count=1)

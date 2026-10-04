@@ -205,10 +205,12 @@ def plant(core, planted: list[dict]) -> dict[str, str]:
             keys[doc["key"]] = record.id
         for doc in planted:
             scope = doc.get("scope", {})
-            core.state.register.update(keys[doc["key"]], approval_status="approved",
+            core.state.register.update(keys[doc["key"]],
                                        effective_from=scope.get("effective_from"), effective_to=scope.get("effective_to"),
                                        phases=scope.get("phases", []), applies_to=scope.get("applies_to", []),
                                        supersedes=[keys.get(k, k) for k in scope.get("supersedes", [])])
+            planted_record = core.state.register.get(keys[doc["key"]])  # approved naming its text (REF S23, S8)
+            core.state.register.decide(planted_record.id, "approved", planted_record.content_sha256)
     return keys
 
 

@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from tests.door_helpers import as_job, writing
+from tests.door_helpers import as_job, decided, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -125,7 +125,7 @@ def test_s23_round5_publish_reported_failed_but_live_when_audit_write_fails(sale
         new_text = "# Policy\n\nVersion two text, not live until published.\n"
         with writing(core):
             ingest_source(register, sections, sid)
-            register.update(sid, approval_status="approved")
+            decided(register, sid, approval_status="approved")
             content.save_draft(sid, new_text)
             content.submit(sid)
         before = register.get(sid)

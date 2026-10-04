@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from iam_helpers import sign_in  # noqa: E402
 from test_space_leaks import hermetic, refuse  # noqa: E402
 
-from tests.door_helpers import as_job, decide, writing
+from tests.door_helpers import as_job, decide, decided, writing
 
 TODAY = "2026-10-03"
 HEAD = {"X-OpsAtlas-Space": "acme"}
@@ -70,13 +70,13 @@ class Space:
             assert r.status_code == 200, r.text
         if scope:
             with writing(self.core):  # set-up is a job (REF S23, the door)
-                self.register.update(sid, **scope)
+                decided(self.register, sid, **scope)
         return sid
 
     def edit(self, sid: str, **fields) -> None:
         """An edit landing while an answer is prepared: a job holding the workspace's lock, as the details request
         would (REF S23, the door); the ask passes the door and does not wait for it."""
-        as_job(self.core, self.register.update, sid, **fields)
+        as_job(self.core, decided, self.register, sid, **fields)  # an approval through decide (REF S23, S8)
 
     def ask(self, q: str) -> dict:
         r = self.client.post("/api/ask", json={"q": q}, headers=HEAD)

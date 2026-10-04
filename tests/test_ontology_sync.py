@@ -10,6 +10,7 @@ from assistant.ontology import OntologyStore, ontology_id, rebuild_ontology
 from assistant.process.registry import ProcessRegistry
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 PASSWORD = "test-pass"
 
@@ -98,7 +99,7 @@ def test_rebuild_populates_sources_processes_deduped_entities_and_compliance_lin
         b"# Draft\n\n## Roles and responsibilities\n\n| Role | Notes |\n|---|---|\n| Draft owner | Owns draft |",
         title="Rejected Draft",
     )
-    register.update(rejected.id, approval_status="rejected")
+    decided(register, rejected.id, approval_status="rejected")
     after_rejected = rebuild_ontology(register, process_registry, compliance_latest, store)
 
     assert after_rejected["counts"]["objects"]["source"] == 4
@@ -127,8 +128,8 @@ def test_rebuild_reconciles_system_and_role_aliases_to_canonical_entities(tmp_pa
         ).encode(),
         title="Sales Pack",
     )
-    register.update(first.id, approval_status="approved")
-    register.update(second.id, approval_status="approved")
+    decided(register, first.id, approval_status="approved")
+    decided(register, second.id, approval_status="approved")
     store = OntologyStore(tmp_path / "ontology.db")
 
     result = rebuild_ontology(register, ProcessRegistry(register.base_dir), None, store)
@@ -173,7 +174,7 @@ def test_rebuild_reconciles_common_role_alias_families_without_merging_approvers
             _alias_process_doc(title, role=role, system="POS").encode(),
             title=title,
         )
-        register.update(source.id, approval_status="approved")
+        decided(register, source.id, approval_status="approved")
     store = OntologyStore(tmp_path / "ontology.db")
 
     result = rebuild_ontology(register, ProcessRegistry(register.base_dir), None, store)
@@ -285,8 +286,8 @@ def test_ontology_query_api_exposes_schema_search_detail_traversal_and_stats(tmp
 def _seed_approved_process_sources(register: SourceRegister) -> tuple[str, str]:
     first = register_upload(register, "supplier.md", _process_doc("Supplier Setup", "supplier").encode(), title="Supplier Setup")
     second = register_upload(register, "article.md", _process_doc("Article Setup", "article").encode(), title="Article Setup")
-    register.update(first.id, approval_status="approved")
-    register.update(second.id, approval_status="approved")
+    decided(register, first.id, approval_status="approved")
+    decided(register, second.id, approval_status="approved")
     return first.id, second.id
 
 

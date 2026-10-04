@@ -22,6 +22,14 @@ class ContentReplaced(LookupError):
     """The source's text is not the one the reader's record names: it is being replaced (REF S23)."""
 
 
+class TextNotNamed(ValueError):
+    """A decision on a document whose named text is not the record's, or not what is stored (REF S23, S8)."""
+
+
+class ApprovalOutsideDecide(ValueError):
+    """A write that would change a document's approval other than through ``decide`` or a commit (REF S23, S8)."""
+
+
 class SourceRegister:
     MOVE_ON_READ = True  # a reader holding a committed version's record moves its staged text into place (REF S23)
 
@@ -166,8 +174,55 @@ class SourceRegister:
             self.files_dir.mkdir(parents=True, exist_ok=True)
             atomic_write_bytes(self.file_path(source_id), content)  # a reader never finds half a file (REF S23)
 
+    # ---- approval: decided in the store (REF S23, S8, the Human's decision after round 9) ----------------------
+    #
+    # A document's approval changes in two ways only: ``decide``, which names the text decided on and checks that it is
+    # the record's and is what is stored; and a commit, the write of a new version's record, which sets the approval in
+    # the same write that names its new text. Every other write that would change it is refused.
+
+    def names_text(self, source_id: str, sha: str | None) -> str | None:
+        """Why a decision naming ``sha`` cannot be taken on this source, or None: the record must name that text, and
+        that text must be what is stored (the live file, or a committed version still staged), never a file replaced
+        outside content management."""
+        record = self.get(source_id)
+        if record is None:
+            return "No such source"
+        if not sha or record.content_sha256 != sha:
+            return "The document changed since it was read; review the current version"
+        try:
+            self.read_content(source_id, sha=sha)
+        except ContentReplaced:
+            return "The file was changed outside content management; publish it as a new version, then review it"
+        except OSError:
+            return "The document's text cannot be read"
+        return None
+
+    @writes
+    def decide(self, source_id: str, status: str, sha: str | None) -> SourceRecord:
+        """Approve or reject the text ``sha`` names: the one way a decision changes a document's approval (S8)."""
+        reason = self.names_text(source_id, sha)
+        if reason is not None:
+            raise TextNotNamed(reason)
+        return self._update(source_id, approval_status=status)
+
+    @writes
+    def withdraw(self, source_id: str) -> SourceRecord | None:
+        """The workspace's own withdrawal, when its named rejection could not be taken: fail closed, out of answers. Not
+        reachable by a person (no route or action calls it)."""
+        return self._update(source_id, approval_status="rejected")
+
     @writes
     def update(self, source_id: str, **fields) -> SourceRecord | None:
+        """Any field but the approval. A write naming a new text (a commit: ``content_sha256`` with it) may set the
+        approval too; any other change of approval goes through ``decide`` (REF S23, S8)."""
+        if "approval_status" in fields and "content_sha256" not in fields:
+            current = self.get(source_id)
+            if current is not None and current.approval_status != fields["approval_status"]:
+                raise ApprovalOutsideDecide("A document's approval changes only through a decision naming its text")
+        return self._update(source_id, **fields)
+
+    @writes
+    def _update(self, source_id: str, **fields) -> SourceRecord | None:
         with self._lock:
             rows = self._read_index()
             for row in rows:

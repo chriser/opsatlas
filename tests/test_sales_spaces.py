@@ -6,7 +6,7 @@ import pytest
 from iam_helpers import sign_in
 
 from services.opsatlas_sales.spaces import FAMILY, PLAYBOOK, PRODUCT, SYSTEM, library_chain
-from tests.door_helpers import decide, writing
+from tests.door_helpers import decide, decided, writing
 
 
 @pytest.fixture
@@ -140,7 +140,7 @@ def test_a_legacy_workspace_is_split_into_the_family_spaces_with_approvals_and_f
                               (family.registers[PRODUCT], app.state.sales.sections.stores[PRODUCT]), keep_approval=True,
                               folder=['Evidence', 'DT603 paper'] if space == PLAYBOOK else ['Tibi', 'Conversation style'])
         approved = next(s for s in family.registers[PRODUCT].list() if s.title and 'Commercial' in s.title)
-        family.registers[PRODUCT].update(approved.id, approval_status='approved')
+        decided(family.registers[PRODUCT], approved.id, approval_status='approved')
     (root / 'spaces.json').unlink()
     again = create_sales_app(root)
     family = again.state.family_register

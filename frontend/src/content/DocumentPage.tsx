@@ -297,7 +297,9 @@ export function DocumentPage({
   }
 
   async function returnToDraft() {
-    const d = await run(() => returnDraft(sourceId));
+    const current = docRef.current;
+    if (!current?.draft) return;
+    const d = await run(() => returnDraft(sourceId, current.draft!.sha));  // the draft on screen (REF S23, S8)
     if (d) await refreshAll(d);
   }
 

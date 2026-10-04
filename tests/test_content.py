@@ -12,7 +12,7 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
-from tests.door_helpers import as_job
+from tests.door_helpers import as_job, decided
 
 PASSWORD = "content-test-pass"
 GUIDE = b"# Supplier guide\n\n## Checks\n\nCredit checks are done before the supplier is created.\n"
@@ -26,7 +26,7 @@ def workspace(tmp_path, monkeypatch):
     sections = SectionStore(tmp_path)
     source = register_upload(register, "guide.md", GUIDE, "Supplier guide")
     ingest_source(register, sections, source.id)
-    register.update(source.id, approval_status="approved")
+    decided(register, source.id, approval_status="approved")
     client = TestClient(create_app(register, AuthService(PASSWORD)))
     token = client.post("/api/auth/login", json={"password": PASSWORD}).json()["token"]
     client.headers.update({"Authorization": f"Bearer {token}"})
@@ -109,7 +109,8 @@ def test_editing_a_submitted_draft_returns_it_to_draft(workspace):
     doc = client.put(f"/api/content/documents/{sid}/draft", json={"text": edit(doc["published"]["text"]) + "\nMore.\n"}).json()
     assert doc["status"] == "draft"
     client.post(f"/api/content/documents/{sid}/submit", json={})
-    assert client.post(f"/api/content/documents/{sid}/return", json={"note": "Not yet"}).json()["status"] == "draft"
+    submitted = client.get(f"/api/content/documents/{sid}").json()["draft"]["sha"]  # a return names the draft (S8)
+    assert client.post(f"/api/content/documents/{sid}/return", json={"note": "Not yet", "draft_sha": submitted}).json()["status"] == "draft"
 
 
 def test_a_draft_overtaken_by_another_edit_cannot_be_published(workspace):

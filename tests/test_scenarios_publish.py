@@ -19,8 +19,9 @@ swap, before the record is written; a committed version whose move into place fa
 reported failed; the event store down;
 two publishes at once; a details edit during a publish; a reader during a publish; a write without the lock; an
 approval of a version superseded since it was read; a rename whose title hook would change the text; a decision on a
-file replaced outside content management; a rejection naming no text. The red teams' findings (REF H3b rounds 5 and
-6; REF S23 rounds 1 to 8) are kinds here. A publish here is a job: it holds the workspace's lock, as a request does.
+file replaced outside content management, through any path; a rejection naming no text; a return naming an older
+draft. The red teams' findings (REF H3b rounds 5 and 6; REF S23 rounds 1 to 9) are kinds here. A publish here is a
+job: it holds the workspace's lock, as a request does.
 """
 import hashlib
 import os
@@ -122,7 +123,8 @@ def one_run(run, client, core, sid, live):
                                "reader-inside", "rebuild-inside", "two-at-once", "edit-during", "move-fails",
                                "crash-after-commit", "restore", "history-lands-then-fails", "events-down",
                                "read-while-writing", "write-without-lock", "approve-superseded",
-                               "rename-changes-text", "decide-on-replaced-file", "reject-unnamed"])
+                               "rename-changes-text", "decide-on-replaced-file", "reject-unnamed",
+                               "return-older-draft"])
         run.step(kind, marker)
         if kind == "publish":
             ok = publish(text)
@@ -236,16 +238,43 @@ def one_run(run, client, core, sid, live):
             run.promise("a rename that would change the text is refused", renamed.status_code == 409, renamed.text[:200])
             check(kind)
             continue
-        elif kind == "decide-on-replaced-file":  # red team, S23 round 8: approve the file shown, not the record's text
+        elif kind == "decide-on-replaced-file":  # red team, S23 rounds 8 and 9: every path, the store decides
             path, original = register.file_path(sid), register.file_path(sid).read_bytes()
             path.write_bytes(process_text(marker))  # replaced on disk, outside content management
+            record_sha = register.get(sid).content_sha256
             try:
-                shown = hashlib.sha256(process_text(marker)).hexdigest()
-                decided = client.post(f"/api/content/documents/{sid}/approve", json={"expected_sha": shown}, headers=HEAD)
-                run.promise("a decision on a file replaced outside is refused", decided.status_code == 409,
-                            decided.text[:200])
+                verb = run.rng.choice(["approve", "reject"])
+                way = run.rng.choice(["content", "governance", "action"])
+                if way == "content":
+                    shown = hashlib.sha256(process_text(marker)).hexdigest()
+                    status = client.post(f"/api/content/documents/{sid}/{verb}", json={"expected_sha": shown},
+                                         headers=HEAD).status_code
+                elif way == "governance":
+                    status = client.post(f"/api/governance/sources/{sid}/{verb}", json={"sha": record_sha},
+                                         headers=HEAD).status_code
+                else:
+                    outcome = client.post(f"/api/ontology/actions/{verb}_source",
+                                          json={"params": {"source_id": sid, "sha": record_sha}}, headers=HEAD).json()
+                    status = 200 if outcome.get("outcome") == "ok" else 409
+                run.promise("a decision on a file replaced outside is refused, whatever the path", status in (409, 400),
+                            f"{verb} through {way}: {status}")
+                run.promise("and the approval stands", register.get(sid).approval_status == "approved", f"{verb} {way}")
             finally:
                 path.write_bytes(original)
+            check(kind)
+            continue
+        elif kind == "return-older-draft":  # red team, S23 round 9: a return names the draft the reviewer read
+            with writing(core):
+                content.save_draft(sid, f"# Returns release\n\nDraft one ({marker}).\n")
+                content.submit(sid)
+            read = content.store.document(sid)["draft_sha"]
+            with writing(core):
+                content.save_draft(sid, f"# Returns release\n\nDraft two ({marker}).\n")
+                content.submit(sid)
+            stale = client.post(f"/api/content/documents/{sid}/return", json={"draft_sha": read}, headers=HEAD)
+            run.promise("a return naming an older draft is refused", stale.status_code == 409, stale.text[:200])
+            with writing(core):
+                content.discard_draft(sid)
             check(kind)
             continue
         elif kind == "reject-unnamed":  # red team, S23 round 8: a rejection must name its text too

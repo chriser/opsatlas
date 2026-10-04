@@ -22,6 +22,13 @@ class NoteBody(BaseModel):
     note: str = ""
 
 
+class ReturnBody(BaseModel):
+    """A return to the author names the draft returned (REF S23, S8), as a publish does."""
+
+    draft_sha: str
+    note: str = ""
+
+
 class PublishBody(BaseModel):
     draft_sha: str
     note: str = ""
@@ -108,8 +115,8 @@ def build_content_router(content: ContentService, dependencies: Sequence | None 
         return _guard(lambda: content.submit(source_id, body.note))
 
     @router.post("/documents/{source_id}/return", dependencies=[need("documents.reject")])
-    def return_to_draft(source_id: str, body: NoteBody) -> dict:
-        return _guard(lambda: content.return_to_draft(source_id, body.note))
+    def return_to_draft(source_id: str, body: ReturnBody) -> dict:
+        return _guard(lambda: content.return_to_draft(source_id, body.note, body.draft_sha))
 
     @router.post("/documents/{source_id}/publish", dependencies=[need("documents.publish")])
     def publish(source_id: str, body: PublishBody) -> dict:

@@ -13,7 +13,7 @@ from assistant.process.parser import parse_process
 from assistant.retrieval.service import RetrievalService
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
-from tests.door_helpers import writing
+from tests.door_helpers import decided, writing
 
 PACK = """# Anonymised Learning Pack 9 - Store Launch Process
 
@@ -78,7 +78,7 @@ def test_process_map_endpoint_builds_from_approved_sources(tmp_path):
     with writing(reg):  # set-up is a job: the core's stores are governed by its door (REF S23, S7)
         rec = register_upload(reg, "launch.md", PACK.encode(), title="Launch pack")
         ingest_source(reg, store, rec.id)
-        reg.update(rec.id, approval_status="approved")
+        decided(reg, rec.id, approval_status="approved")
 
     maps = client.get("/api/process/maps").json()
     detail = client.get(f"/api/process/maps/{rec.id}").json()

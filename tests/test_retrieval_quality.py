@@ -7,6 +7,7 @@ from assistant.retrieval.rewrite import QueryRewriter
 from assistant.retrieval.service import RetrievalService
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 
 class FakeGen:
@@ -20,7 +21,7 @@ def seed(tmp_path, embedder=None):
     body = "# Controls\n\nDue diligence and credit checks are mandatory gates."
     rec = register_upload(reg, "a.md", body.encode())
     store.replace_for_source(rec.id, build_sections(rec.id, body))
-    reg.update(rec.id, approval_status="approved")
+    decided(reg, rec.id, approval_status="approved")
     cache = EmbeddingCache(reg.base_dir) if embedder else None
     return reg, store, cache
 
@@ -78,7 +79,7 @@ def test_reranker_reorders_results(tmp_path):
     body = "# Onboarding\n\nThe requester completes the credit setup form.\n\n# Credit checks\n\nCredit checks are mandatory credit gates."
     rec = register_upload(reg, "a.md", body.encode())
     store.replace_for_source(rec.id, build_sections(rec.id, body))
-    reg.update(rec.id, approval_status="approved")
+    decided(reg, rec.id, approval_status="approved")
     # Without rerank: BM25 orders by 'credit' frequency. With ReverseReranker the order flips.
     plain = RetrievalService(reg, store).search("credit", top_k=5)[0]
     reranked = RetrievalService(reg, store, reranker=ReverseReranker()).search("credit", top_k=5)[0]

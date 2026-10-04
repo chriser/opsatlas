@@ -20,6 +20,7 @@ from assistant.ingestion.store import SectionStore
 from assistant.sources.register import ContentReplaced, SourceRegister
 from assistant.sources.service import register_upload
 from services.opsatlas_sales.spaces import move_document
+from tests.door_helpers import decided
 
 OLD = b"# Refund policy\n\nRefunds are paid within ten days of the request.\n"
 NEW = b"# Refund policy\n\nRefunds are paid within thirty days of the request.\n"
@@ -43,7 +44,7 @@ def core(base):
 def approved(register, sections, body=OLD):
     record = register_upload(register, "policy.md", body, "Refund policy")
     ingest_source(register, sections, record.id)
-    return register.update(record.id, approval_status="approved")
+    return decided(register, record.id, approval_status="approved")
 
 
 def crash_after_commit(content):

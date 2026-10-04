@@ -90,6 +90,18 @@ def _readers_wait():
         setattr(importlib.import_module(module), "if_free", waits)
 
 
+def _draft_decisions_unnamed():
+    """Publishing or returning a submitted draft without checking which draft the reviewer read."""
+    service = importlib.import_module("assistant.content.service")
+
+    def submitted(self, source_id, draft_sha, refused):
+        state = self.store.document(source_id) or {}
+        if state.get("status") != "submitted" or state.get("draft_text") is None:
+            raise service.ContentError(refused)
+        return state
+    service.ContentService._submitted = submitted
+
+
 def _stores_unchecked():
     """Governed stores that write whoever asks, lock or not (as before the door)."""
     _off("assistant.storage", "require", lambda *args, **kwargs: None)
@@ -300,18 +312,24 @@ GUARDS: dict[str, dict] = {
         "off": lambda: _off("assistant.content.service", "_after_heading", lambda text: ""),
         "tests": ["tests/test_workspace_door.py::test_a_rename_that_would_change_the_text_is_refused"],
     },
-    "a decision is on the record's own text, not a file changed outside (REF S23, S8)": {
-        "off": lambda: _method_off("assistant.content.service", "ContentService", "record_text",
-                                   lambda self, source: self.published_text(source)),
-        "tests": ["tests/redteam/test_s23_round8_redteam.py::"
-                  "test_s23_round8_an_approval_naming_the_shown_text_approves_the_records_other_text"],
-    },
     "an approval names the text it approves (REF S23, S8)": {
-        "off": lambda: _off("assistant.api.routes_governance", "names_current", lambda record, named: True),
+        "off": lambda: _method_off("assistant.sources.register", "SourceRegister", "names_text",
+                                   lambda self, source_id, sha: None),
         "tests": ["tests/test_workspace_door.py::test_an_approval_names_the_text_it_approves",
                   "tests/test_workspace_door.py::test_an_approval_of_the_version_read_is_refused_once_another_is_written",
                   "tests/test_workspace_door.py::test_the_approve_action_names_the_text_too",
-                  "tests/redteam/test_s23_round8_redteam.py::test_s23_round8_a_persons_rejection_through_the_actions_route_names_no_text"],
+                  "tests/redteam/test_s23_round8_redteam.py::test_s23_round8_a_persons_rejection_through_the_actions_route_names_no_text",
+                  "tests/redteam/test_s23_round9_replaced_file.py::test_s23_round9_governance_route_approves_replaced_file",
+                  "tests/redteam/test_s23_round9_replaced_file.py::test_s23_round9_actions_route_approves_replaced_file"],
+    },
+    "an approval changes only through decide or a commit (REF S23, S8)": {
+        "off": lambda: _method_off("assistant.sources.register", "SourceRegister", "update",
+                                   lambda self, source_id, **fields: self._update(source_id, **fields)),
+        "tests": ["tests/test_workspace_door.py::test_an_approval_cannot_be_written_around_decide"],
+    },
+    "a decision on a draft names the draft (REF S23, S8)": {
+        "off": lambda: _draft_decisions_unnamed(),
+        "tests": ["tests/test_workspace_door.py::test_a_return_names_the_draft_returned"],
     },
     "passages without a fingerprint are not served while a version is staged (REF S23)": {
         "off": lambda: setattr(importlib.import_module("assistant.ingestion.store").SectionStore, "UNKNOWN_IS_LIVE", True),

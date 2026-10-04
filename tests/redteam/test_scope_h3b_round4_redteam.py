@@ -11,7 +11,7 @@ import time
 
 import pytest
 
-from tests.door_helpers import as_job, decide, writing
+from tests.door_helpers import as_job, decide, decided, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -225,7 +225,7 @@ def test_a_source_approved_mid_answer_answers_beside_the_source_it_replaces(sale
 
     def approval_lands_after_the_reading(records=None):
         out = real(records)
-        as_job(core, core.state.register.update, new, approval_status="approved")
+        as_job(core, decided, core.state.register, new, approval_status="approved")
         return out
 
     svc._all_sections = approval_lands_after_the_reading
@@ -272,7 +272,7 @@ def test_control_expired_process_approved_before_the_answer_stays_out(sales):
     client, core, capture = sales
     svc, proc = _expired_pending_process(client, core)
     with writing(core):  # set-up is a job (REF S23, the door)
-        core.state.register.update(proc, approval_status="approved")
+        decided(core.state.register, proc, approval_status="approved")
     prompt = ask(client, capture, QUESTION)
     assert "] (structured facts) " not in prompt
 
@@ -289,7 +289,7 @@ def test_an_expired_process_approved_mid_answer_reaches_it_through_the_process_r
 
     def approval_lands_after_the_reading(records=None):
         out = real(records)
-        as_job(core, core.state.register.update, proc, approval_status="approved")
+        as_job(core, decided, core.state.register, proc, approval_status="approved")
         return out
 
     svc._all_sections = approval_lands_after_the_reading

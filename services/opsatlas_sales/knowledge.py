@@ -57,7 +57,7 @@ class Knowledge:
                                           acting_person('service:workspace-key'))  # the text it withdraws (S8)
             if result.outcome == 'ok':
                 return
-        self.register.update(source_id, approval_status='rejected')
+        self.register.withdraw(source_id)  # fail closed: out of answers, whatever the action said (REF S23, S8)
 
     def records(self):
         return json.loads(self.path.read_text()) if self.path.exists() else []
@@ -278,7 +278,10 @@ class Knowledge:
                 if result.outcome != 'ok':
                     raise ValueError('Atlas approval action failed; review remains pending')
             else:
-                self.register.update(source.id, approval_status=state)
+                try:  # the register's decide: the text reviewed, the one stored (REF S23, S8)
+                    self.register.decide(source.id, state, expected_hash)
+                except ValueError as refused:
+                    raise ValueError('Source changed; review the current version') from refused
             row['approval'] = state
             row['review'] = {'actor': acting_name(), 'actor_id': acting_id(), 'scope': 'internal rehearsal only',
                              'at': datetime.now(timezone.utc).isoformat(), 'hash': expected_hash,

@@ -43,7 +43,7 @@ from ..governance.scope import PHASE_WORDS, PHASES
 from ..iam.context import current_principal
 from ..ingestion.service import NotIngestableError, extract_text, stage_sections
 from ..sources import settle as settling
-from ..sources.register import ContentReplaced
+from ..sources.register import ContentReplaced, TextNotNamed
 from ..storage import governor, if_free
 from . import text as texts
 from .store import ContentStore, now
@@ -372,7 +372,8 @@ class ContentService:
         lock, taken at the door, so the version decided on is the one read: no new version can be written in between
         (REF S23, S7, S8)."""
         source = self._source(source_id)
-        if sha(self.record_text(source)) != expected_sha:  # the record's own text, the one decided on (S8)
+        # The record's own text, for a clear answer here; the register's decide checks it again and that one counts (S8).
+        if sha(self.record_text(source)) != expected_sha:
             raise ContentError("The document changed since you opened it; reload it and review it again")
         state = "approved" if approve else "rejected"
         if source.approval_status == state:
@@ -491,11 +492,19 @@ class ContentService:
         self.store.log(source_id, self.operator.name, "submitted for approval", note.strip()[:300])
         return self.document(source_id)
 
-    def return_to_draft(self, source_id: str, note: str = "") -> dict:
-        self._source(source_id)
+    def _submitted(self, source_id: str, draft_sha: str | None, refused: str) -> dict:
+        """The submitted draft a decision names (REF S23, S8: publishing it, or returning it to its author): it must be
+        the draft the reviewer read, by its SHA-256; a newer one is refused."""
         state = self.store.document(source_id) or {}
-        if state.get("status") != "submitted":
-            raise ContentError("Only a submitted draft can be returned")
+        if state.get("status") != "submitted" or state.get("draft_text") is None:
+            raise ContentError(refused)
+        if not draft_sha or sha(state["draft_text"]) != draft_sha:
+            raise ContentError("The draft changed since you reviewed it; review it again")
+        return state
+
+    def return_to_draft(self, source_id: str, note: str = "", draft_sha: str | None = None) -> dict:
+        self._source(source_id)
+        self._submitted(source_id, draft_sha, "Only a submitted draft can be returned")
         self.store.save_document(source_id, status="draft", submitted_at=None, submitted_by=None, submitted_note=None)
         self.store.log(source_id, self.operator.name, "returned to draft", note.strip()[:300])
         return self.document(source_id)
@@ -503,12 +512,8 @@ class ContentService:
     def publish(self, source_id: str, draft_sha: str, note: str = "") -> dict:
         """The Human's approval: the submitted draft becomes the source's next version."""
         source = self._source(source_id)
-        state = self.store.document(source_id) or {}
-        if state.get("status") != "submitted" or state.get("draft_text") is None:
-            raise ContentError("Submit the draft for approval first")
+        state = self._submitted(source_id, draft_sha, "Submit the draft for approval first")
         text = state["draft_text"]
-        if sha(text) != draft_sha:
-            raise ContentError("The draft changed since you reviewed it; review it again")
         published = self.published_text(source)
         if state.get("base_sha") and state["base_sha"] != sha(published):
             raise ContentError("The published document changed after this draft was started; compare the versions "
@@ -922,12 +927,17 @@ class ContentService:
         source = self.register.get(key)
         return f"“{source.title}”" if source else "a document"
 
+    def _decide(self, source_id: str, status: str, sha: str) -> None:
+        """The register's decide, its refusal said as this service says it (REF S23, S8)."""
+        try:
+            self.register.decide(source_id, status, sha)
+        except TextNotNamed as refused:
+            raise ContentError(str(refused)) from None
+
     def _approve(self, source_id: str, sha: str) -> None:
         """Approve the text ``sha`` names, the one the Human read (REF S23, S8); any other is refused."""
         if self.actions is None:
-            if self._source(source_id).content_sha256 != sha:
-                raise ContentError("The document changed since you opened it; reload it and review it again")
-            self.register.update(source_id, approval_status="approved")
+            self._decide(source_id, "approved", sha)
             return
         from ..ontology.actions import acting_person
         result = self.actions.execute("approve_source", {"source_id": source_id, "sha": sha},
@@ -937,9 +947,7 @@ class ContentService:
 
     def _reject(self, source_id: str, sha: str) -> None:
         if self.actions is None:
-            if self._source(source_id).content_sha256 != sha:
-                raise ContentError("The document changed since you opened it; reload it and review it again")
-            self.register.update(source_id, approval_status="rejected")
+            self._decide(source_id, "rejected", sha)
             return
         from ..ontology.actions import acting_person
         result = self.actions.execute("reject_source", {"source_id": source_id, "sha": sha},

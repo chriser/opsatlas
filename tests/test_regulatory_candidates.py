@@ -16,6 +16,7 @@ from assistant.regulatory.review import RegulatoryReviewStore
 from assistant.retrieval.service import RetrievalService
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 REGULATORY_PACK = """# Site Operating Procedure
 
@@ -34,7 +35,7 @@ def _approved_source(tmp_path):
     sections = SectionStore(register.base_dir)
     source = register_upload(register, "site-ops.md", REGULATORY_PACK.encode(), title="Site ops pack")
     ingest_source(register, sections, source.id)
-    register.update(source.id, approval_status="approved")
+    decided(register, source.id, approval_status="approved")
     return register, sections, source
 
 
@@ -149,7 +150,7 @@ def test_regulatory_impact_preserves_markdown_table_evidence(tmp_path):
         title="Tax table pack",
     )
     ingest_source(register, sections, source.id)
-    register.update(source.id, approval_status="approved")
+    decided(register, source.id, approval_status="approved")
     reviews = RegulatoryReviewStore(register.base_dir)
     report = discover_regulatory_candidates(register, sections, reviews)
     financial = next(candidate for candidate in report["candidates"] if candidate["theme"] == "financial_tax")

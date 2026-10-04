@@ -32,7 +32,7 @@ from iam_helpers import sign_in
 from scenarios import explore
 from test_space_leaks import hermetic, refuse
 
-from tests.door_helpers import as_job, decide
+from tests.door_helpers import as_job, decide, decided
 
 TODAY = date(2026, 10, 3)
 HEAD = {"X-OpsAtlas-Space": "acme"}
@@ -215,7 +215,7 @@ def one_run(run, client, core, ids, filler):
         elif run.rng.random() < 0.15:
             fields["supersedes"] = [run.rng.choice([i for i in ids if i != sid])]
         state[sid] = fields
-        as_job(core, core.state.register.update, sid, **{k: fields[k] for k in FIELDS},
+        as_job(core, decided, core.state.register, sid, **{k: fields[k] for k in FIELDS},
                                    approval_status="approved" if fields["approved"] else "pending")
     retrieval = plain or run.rng.random() < 0.35
     state[filler] = {"effective_from": None, "effective_to": None if retrieval else "2025-12-31", "applies_to": [],
@@ -225,7 +225,7 @@ def one_run(run, client, core, ids, filler):
     in_step = run.rng.random() >= 0.1
     if not in_step:  # red team, round 5: a source approved without a rebuild, so the map is out of step
         state[ids[4]]["approved"] = True
-        as_job(core, core.state.register.update, ids[4], approval_status="approved")
+        as_job(core, decided, core.state.register, ids[4], approval_status="approved")
     question = run.rng.choice(QUESTIONS)
     run.step("register", "; ".join(f"d{n}: {state[s]}" for n, s in enumerate(ids)))
     before = _judge(state)
@@ -257,7 +257,7 @@ def one_run(run, client, core, ids, filler):
         for key, value in updates.items():
             after_state[target]["approved" if key == "approval_status" else key] = (
                 value == "approved" if key == "approval_status" else value)
-        edit = lambda: as_job(core, core.state.register.update, target, **updates)  # noqa: E731
+        edit = lambda: as_job(core, decided, core.state.register, target, **updates)  # noqa: E731
         if kind == "approve-rebuild":  # the approval action, which rebuilds the search index and the facts map
             edit = lambda: as_job(core, core.state.content._approve, ids[4],  # noqa: E731
                                    core.state.register.get(ids[4]).content_sha256)

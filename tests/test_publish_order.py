@@ -12,7 +12,7 @@ from iam_helpers import sign_in
 from test_space_leaks import hermetic, refuse
 
 from assistant.sources.register import ContentReplaced
-from tests.door_helpers import as_job, decide, writing
+from tests.door_helpers import as_job, decide, decided, writing
 
 HEAD = {"X-OpsAtlas-Space": "acme"}
 V1 = b"# Purchase orders\n\nThe procurement manager approves every purchase order.\n"
@@ -213,9 +213,9 @@ def test_a_version_written_without_approval_keeps_the_status_its_writer_saw(acme
     core, sid = acme
     content, register = core.state.content, core.state.register
     with writing(core):
-        register.update(sid, approval_status="pending")
+        decided(register, sid, approval_status="pending")
     stale = register.get(sid)
     with writing(core):
-        register.update(sid, approval_status="approved")  # the old text approved, after the writer read its record
+        decided(register, sid, approval_status="approved")  # the old text approved, after the writer read its record
         content._write_version(stale, b"# Vault\n\nThe vault code changes every Friday.\n", approve=False)
     assert register.get(sid).approval_status != "approved", "the unapproved version inherited the approval"

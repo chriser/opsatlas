@@ -6,6 +6,7 @@ from assistant.ingestion.store import SectionStore
 from assistant.sources.register import SourceRegister
 from services.opsatlas_sales.knowledge import Knowledge
 from services.opsatlas_sales.workspace import workspace
+from tests.door_helpers import decided
 
 
 def test_isolation_seed_and_approval_lifecycle(tmp_path):
@@ -38,7 +39,7 @@ def test_supporting_source_change_and_deletion_invalidates(tmp_path):
     row = k.seed()[0]
     k.decide(row['id'], row['sha256'], True)
     ref = row['references'][0]['source_id']
-    k.register.update(ref, approval_status='rejected')
+    decided(k.register, ref, approval_status='rejected')
     assert not k.catalog()[0]['eligible']
     k.register.remove(ref)
     assert not k.catalog()[0]['eligible']
@@ -102,12 +103,12 @@ def test_core_api_origin_auth_and_native_approval(tmp_path, monkeypatch):
 def test_governance_is_the_single_source_of_approval(tmp_path):
     k = Knowledge(SourceRegister(workspace(tmp_path / 'sales') / 'core'))
     row = k.seed()[0]
-    k.register.update(row['source_id'], approval_status='approved')
+    decided(k.register, row['source_id'], approval_status='approved')
     assert k.records()[0]['approval'] == 'pending'  # legacy cache must not block native approval
     assert k.catalog()[0]['approval'] == 'approved' and k.catalog()[0]['eligible']
-    k.register.update(row['source_id'], approval_status='rejected')
+    decided(k.register, row['source_id'], approval_status='rejected')
     assert k.catalog()[0]['approval'] == 'rejected' and not k.catalog()[0]['eligible']
-    k.register.update(row['source_id'], approval_status='approved')
+    decided(k.register, row['source_id'], approval_status='approved')
     k.register.write_content(row['source_id'], b'Unreviewed changed content')
     assert not k.catalog()[0]['eligible']
 

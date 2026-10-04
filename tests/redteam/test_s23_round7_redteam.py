@@ -15,7 +15,7 @@ import time
 
 import pytest
 
-from tests.door_helpers import as_job, writing
+from tests.door_helpers import as_job, decided, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -63,7 +63,7 @@ def _acme_document(app, text=b"# Pricing\n\nAlpha is the first plan.\n"):
     with writing(core):  # set-up is a job (REF S23, the door)
         record = register_upload(register, "pricing.md", text, "Pricing")
         ingest_source(register, sections, record.id)
-        register.update(record.id, approval_status="approved")
+        decided(register, record.id, approval_status="approved")
     return core, record.id
 
 

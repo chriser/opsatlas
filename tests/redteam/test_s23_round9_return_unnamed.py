@@ -3,11 +3,7 @@ text. A draft edited and resubmitted after the reviewer read it is returned on t
 text, which the reviewer never saw."""
 from __future__ import annotations
 
-import pytest
-
 from tests.redteam.test_s23_round9_replaced_file import HEAD, acme  # noqa: F401  (the hermetic Sales space fixture)
-
-PENDING = pytest.mark.xfail(strict=True, reason="REF S23 round 9: the stop rule on approvals; awaiting the Human's design decision")
 
 D1 = "# Pricing guide\n\nThe Acme plan costs twelve pounds a month.\n\nIt includes support.\n"
 D2 = "# Pricing guide\n\nThe Acme plan costs eleven pounds a month.\n\nIt includes support.\n"
@@ -17,7 +13,6 @@ def _doc(client, sid):
     return client.get(f"/api/content/documents/{sid}", headers=HEAD).json()
 
 
-@PENDING
 def test_s23_round9_return_names_no_text(acme):  # noqa: F811
     client, core, sid = acme
     assert client.put(f"/api/content/documents/{sid}/draft", json={"text": D1}, headers=HEAD).status_code == 200

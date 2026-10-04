@@ -246,6 +246,15 @@ class FamilyRegister:
     def update(self, source_id, **fields):
         return self._for(source_id).update(source_id, **fields)
 
+    def names_text(self, source_id, sha):
+        return self._for(source_id).names_text(source_id, sha)
+
+    def decide(self, source_id, status, sha):
+        return self._for(source_id).decide(source_id, status, sha)
+
+    def withdraw(self, source_id):
+        return self._for(source_id).withdraw(source_id)
+
     def add(self, record, content):
         return self.registers[self.home].add(record, content)
 

@@ -12,6 +12,7 @@ from assistant.ingestion.service import ingest_source
 from assistant.ingestion.store import SectionStore
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 SUPPLIER = """# Supplier pack
 
@@ -111,7 +112,7 @@ def corpus(tmp_path, packs=(('supplier.md', 'Supplier pack', SUPPLIER), ('contra
     for name, title, text in packs:
         source = register_upload(register, name, text.encode(), title)
         ingest_source(register, sections, source.id)
-        register.update(source.id, approval_status='approved')
+        decided(register, source.id, approval_status='approved')
         ids[title] = source.id
     return register, sections, ids
 
@@ -156,7 +157,7 @@ def test_the_store_re_extracts_only_changed_sources(tmp_path):
     assert store.sync(register, sections)[1]['extracted'] == []
     register.update(ids['Pricing pack'], content_sha256='changed', version=2)
     assert store.sync(register, sections)[1]['extracted'] == [ids['Pricing pack']]
-    register.update(ids['Pricing pack'], approval_status='rejected')
+    register.withdraw(ids['Pricing pack'])  # out of answers (its record names a text not stored: no decision can)
     assert store.sync(register, sections)[1]['removed'] == [ids['Pricing pack']]
 
 

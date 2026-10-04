@@ -4,6 +4,7 @@ from assistant.process.parser import parse_process
 from assistant.process.registry import ProcessRegistry
 from assistant.sources.register import SourceRegister
 from assistant.sources.service import register_upload
+from tests.door_helpers import decided
 
 PACK = """# Anonymised Learning Pack 1 – End-to-End Supplier Setup Process
 
@@ -124,7 +125,7 @@ def test_process_evidence_text_lists_roles_and_systems():
 def test_registry_builds_from_approved_sources_only(tmp_path):
     reg = SourceRegister(tmp_path)
     approved = register_upload(reg, "p1.md", PACK.encode(), title="Pack 1")
-    reg.update(approved.id, approval_status="approved")
+    decided(reg, approved.id, approval_status="approved")
     register_upload(reg, "p2.md", PACK.encode(), title="Pack 2 (pending)")  # not approved
 
     registry = ProcessRegistry(reg.base_dir)
@@ -144,7 +145,7 @@ def test_answer_adds_process_facts_as_evidence_when_matched(tmp_path):
     store = SectionStore(reg.base_dir)
     rec = register_upload(reg, "p1.md", PACK.encode(), title="Pack 1")
     ingest_source(reg, store, rec.id)
-    reg.update(rec.id, approval_status="approved")
+    decided(reg, rec.id, approval_status="approved")
     pr = ProcessRegistry(reg.base_dir)
     pr.build_from_sources(reg)
 
@@ -171,7 +172,7 @@ def test_answer_rebuilds_process_registry_before_matching_newly_approved_source(
     store = SectionStore(reg.base_dir)
     rec = register_upload(reg, "article.md", ARTICLE_PACK.encode(), title="Article setup")
     ingest_source(reg, store, rec.id)
-    reg.update(rec.id, approval_status="approved")
+    decided(reg, rec.id, approval_status="approved")
     pr = ProcessRegistry(reg.base_dir)
 
     class Gen:
@@ -261,6 +262,6 @@ def test_word_and_pdf_sources_yield_their_text_not_their_bytes(tmp_path):
     assert source_text("refunds.md", b"# Refunds\n") == "# Refunds\n"  # plain text is decoded as before
     reg = SourceRegister(tmp_path)
     record = register_upload(reg, "refunds.docx", word.getvalue(), title="Refunds pack")
-    reg.update(record.id, approval_status="approved")
+    decided(reg, record.id, approval_status="approved")
     [derived] = ProcessRegistry(tmp_path).derive_from_sources(reg)
     assert derived.name == "Card refunds"  # the pack's heading, read from the document's text

@@ -5,6 +5,7 @@ from test_governance_statements import Embedder, Judge, corpus
 
 from assistant.governance import scope
 from assistant.governance.statement_review import run_statement_review
+from tests.door_helpers import decided
 
 
 def test_phases_dates_and_what_a_statement_applies_to_are_read_from_its_words():
@@ -122,8 +123,8 @@ def test_a_superseded_source_is_not_governed_while_its_replacement_is(tmp_path):
     result = run_statement_review(register, sections, tmp_path, Embedder(), 'e', Judge(), 'j', min_cosine=0.3)
     assert result['raised']['conflict'] == 0 and result['settings']['superseded_sources'] == [ids['Rules v1']]
     # A replacement that is itself not governed (rejected) supersedes nothing.
-    register.update(ids['Rules v2'], approval_status='rejected')
-    register.update(ids['Rules v1'], approval_status='approved')
+    decided(register, ids['Rules v2'], approval_status='rejected')
+    decided(register, ids['Rules v1'], approval_status='approved')
     assert run_statement_review(register, sections, tmp_path, Embedder(), 'e', Judge(), 'j', min_cosine=0.3)['settings'][
         'superseded_sources'] == []
 

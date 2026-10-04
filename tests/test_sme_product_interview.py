@@ -7,6 +7,7 @@ from assistant.sources.register import SourceRegister
 from services.opsatlas_sales.knowledge import Knowledge
 from services.opsatlas_sales.workspace import workspace
 from services.sme_interviewer.product_interviewer import ProductInterviewer
+from tests.door_helpers import decided
 
 
 @pytest.fixture
@@ -175,10 +176,10 @@ def test_product_session_settings_are_server_bound(tmp_path, monkeypatch):
 def test_native_approval_cannot_bypass_interview_scope_or_uncertainty(tmp_path):
     k = knowledge(tmp_path)
     row = k.propose(proposal())
-    k.register.update(row['source_id'], approval_status='approved')
+    decided(k.register, row['source_id'], approval_status='approved')
     assert not k.catalog()[-1]['eligible']
     resolve(k, row)
     assert k.catalog()[-1]['eligible']
     uncertain = k.propose(proposal(session_id='other', status='uncertain'))
-    k.register.update(uncertain['source_id'], approval_status='approved')
+    decided(k.register, uncertain['source_id'], approval_status='approved')
     assert not k.catalog()[-1]['eligible']

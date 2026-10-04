@@ -11,7 +11,7 @@ import time
 
 import pytest
 
-from tests.door_helpers import as_job, decide, writing
+from tests.door_helpers import as_job, decide, decided, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -117,7 +117,7 @@ def test_scope_h3b_round5_out_of_step_facts_map_still_lets_process_registry_answ
     add(client, "po.md", PROCESS_DOC)
     other = add(client, "other.md", "# Travel\n\nTrain tickets are booked through the travel desk.\n", approve=False)
     with writing(core):  # set-up is a job (REF S23, the door)
-        core.state.register.update(other, approval_status="approved")  # approved; the facts map not yet rebuilt
+        decided(core.state.register, other, approval_status="approved")  # approved; the facts map not yet rebuilt
     scope_on()
     approved = [r for r in core.state.register.list() if r.approval_status == "approved"]
     assert not core.state.answer._facts_in_step(approved)  # the map is out of step with this reading
@@ -154,7 +154,10 @@ def _publish_pending_v2(core, sid: str, text: str):
     register = core.state.register
     source = register.get(sid)
     register.write_content(sid, text.encode())
-    register.update(sid, version=source.version + 1, approval_status="pending")
+    # Restated for the decision in the store (REF S23, S8): the pending approval is set by a write naming the new text
+    # (a commit), the one way besides decide that an approval changes.
+    register.update(sid, version=source.version + 1, approval_status="pending",
+                    content_sha256=__import__("hashlib").sha256(text.encode()).hexdigest())
     ingest_source(register, core.state.answer.retrieval.section_store, sid)
 
 

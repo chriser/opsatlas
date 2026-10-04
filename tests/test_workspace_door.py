@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from assistant.storage import NotHolding, WriteDoor, holds, locked
-from tests.door_helpers import as_job, writing
+from tests.door_helpers import as_job, decided, writing
 from tests.iam_helpers import sign_in
 from tests.test_space_leaks import hermetic, refuse
 
@@ -60,7 +60,7 @@ def _document(app, approval="approved", text=TEXT):
     with writing(core):  # set-up is a job: it holds the workspace's lock, as a request does
         record = register_upload(register, "pricing.md", text, "Pricing")
         ingest_source(register, sections, record.id)
-        register.update(record.id, approval_status=approval)
+        decided(register, record.id, approval_status=approval)
     return core, record.id
 
 
@@ -300,3 +300,41 @@ def test_a_rename_that_would_change_the_text_is_refused(sales):
         content.hooks["retitle"] = None
     assert refused.status_code == 409, refused.text
     assert register.read_content(source_id) == before and register.get(source_id).approval_status == "approved"
+
+
+def test_an_approval_cannot_be_written_around_decide(sales):
+    """The register changes a document's approval only through decide, naming its text, or a commit naming a new
+    text (S8, the Human's decision after round 9): a plain update of the approval is refused, even under the lock."""
+    from assistant.sources.register import ApprovalOutsideDecide
+    app, client, root = sales
+    core, source_id = _document(app, approval="pending")
+    register = core.state.register
+    with writing(core):
+        with pytest.raises(ApprovalOutsideDecide):
+            register.update(source_id, approval_status="approved")
+        assert register.get(source_id).approval_status == "pending"
+        register.update(source_id, approval_status="pending", title="Pricing")  # no change of approval: allowed
+        register.decide(source_id, "approved", register.get(source_id).content_sha256)
+    assert register.get(source_id).approval_status == "approved"
+
+
+def test_a_return_names_the_draft_returned(sales):
+    """A return to the author names the draft the reviewer read (S8): once the author resubmits a newer draft, a
+    return naming the older one is refused, and one naming the newer is applied."""
+    app, client, root = sales
+    core, source_id = _document(app)
+    content = core.state.content
+    url = f"/api/content/documents/{source_id}"
+    with writing(core):
+        content.save_draft(source_id, "# Pricing\n\nBeta is the first plan.\n")
+        content.submit(source_id)
+    read = content.store.document(source_id)["draft_sha"]  # the reviewer reads this draft
+    with writing(core):
+        content.save_draft(source_id, "# Pricing\n\nGamma is the first plan.\n")
+        content.submit(source_id)
+    stale = client.post(f"{url}/return", json={"draft_sha": read, "note": "About Beta"}, headers=ACME)
+    assert stale.status_code == 409, stale.text
+    assert content.store.document(source_id)["status"] == "submitted"
+    current = content.store.document(source_id)["draft_sha"]
+    assert client.post(f"{url}/return", json={"draft_sha": current}, headers=ACME).status_code == 200
+    assert content.store.document(source_id)["status"] == "draft"

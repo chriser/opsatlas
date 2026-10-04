@@ -17,7 +17,7 @@ from assistant.ingestion.store import SectionStore
 from assistant.retrieval.index import CorpusIndex
 from assistant.sources.models import SourceRecord
 from assistant.sources.register import SourceRegister
-from tests.door_helpers import as_job
+from tests.door_helpers import as_job, decided
 
 V1 = "# Refund policy\n\nRefunds are paid within thirty days of the request.\n"
 V2 = "# Refund policy\n\nRefunds are paid within fourteen days of the request.\n"
@@ -38,7 +38,7 @@ def build(tmp_path, text: str = V1, approved: bool = True, actions=None):
     register.add(record, content)
     ingest_source(register, sections, "doc1")
     if approved:
-        register.update("doc1", approval_status="approved")
+        decided(register, "doc1", approval_status="approved")
     return register, sections, svc
 
 
@@ -243,7 +243,7 @@ class _Actions:
 
 def test_s23_round4_failed_publish_of_the_same_text_reported_as_published(tmp_path, monkeypatch):
     register, sections, svc = build(tmp_path, approved=False, actions=_Actions())
-    register.update("doc1", approval_status="rejected")
+    decided(register, "doc1", approval_status="rejected")
     before = register.get("doc1")
     svc.save_draft("doc1", V1.rstrip("\n"))  # the same text bar the newline the publish adds back
     svc.submit("doc1")
