@@ -101,15 +101,19 @@ def test_object_id_is_stable_and_readable() -> None:
 
 
 def test_synthetic_scale_1000_objects_runs_under_two_seconds(tmp_path) -> None:
-    store = OntologyStore(tmp_path / "ontology.db", registry=SchemaRegistry.load())
-
-    started = time.perf_counter()
-    for index in range(1000):
-        store.upsert_object("role", f"role-{index}", {"name": f"Role {index}"})
-    elapsed = time.perf_counter() - started
-
-    assert store.counts()["objects"] == {"role": 1000}
-    assert elapsed < 2.0
+    """The budget is 2 seconds for 1,000 objects, measured as the best of three runs on fresh stores, so a load spike from
+    other work on the machine (parallel gates) does not read as a regression; a real one fails all three (REF S69)."""
+    timings = []
+    for attempt in range(3):
+        store = OntologyStore(tmp_path / f"ontology-{attempt}.db", registry=SchemaRegistry.load())
+        started = time.perf_counter()
+        for index in range(1000):
+            store.upsert_object("role", f"role-{index}", {"name": f"Role {index}"})
+        timings.append(time.perf_counter() - started)
+        assert store.counts()["objects"] == {"role": 1000}
+        if timings[-1] < 2.0:
+            break
+    assert min(timings) < 2.0, timings
 
 
 def test_a_rebuild_is_one_transaction_readers_wait_for_the_finished_map_and_a_failure_keeps_the_old_one(tmp_path):

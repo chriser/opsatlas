@@ -60,7 +60,12 @@ def recover(args: argparse.Namespace) -> int:
     if user is None or user["state"] != "active":
         print("No active account with that login.", file=sys.stderr)
         return 2
-    token = iam.emergency_recovery(user, args.reason, getpass.getuser())
+    try:
+        token = iam.emergency_recovery(user, args.reason, getpass.getuser())
+    except IamError as refused:  # e.g. suspended since the check above; nothing was written (REF S69)
+        print("No active account with that login." if refused.code == "NOT_ACTIVE" else f"Refused: {refused.message}",
+              file=sys.stderr)
+        return 2
     print(
         f"Recovery for {user['display_name']} <{user['email']}>: sessions ended. One-time reset link, valid "
         f"{iam.setting('reset.minutes')} minutes, shown once:"
