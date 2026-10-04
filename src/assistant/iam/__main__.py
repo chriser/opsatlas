@@ -60,32 +60,7 @@ def recover(args: argparse.Namespace) -> int:
     if user is None or user["state"] != "active":
         print("No active account with that login.", file=sys.stderr)
         return 2
-    store = iam.store
-    with store.transaction():
-        token = iam._issue(  # noqa: SLF001
-            "reset", user, issuer=None, minutes=iam.setting("reset.minutes"), payload={"recovery": True, "reason": args.reason}
-        )
-        iam._revoke_sessions(user["id"], "emergency recovery")  # noqa: SLF001
-        store.insert(
-            "recovery_events",
-            {
-                "id": store.new_id("rec"),
-                "at": store.stamp(),
-                "user_id": user["id"],
-                "kind": "password reset",
-                "reason": args.reason[:500],
-                "host_user": getpass.getuser(),
-            },
-        )
-        iam.audit.record(
-            action="recovery.emergency",
-            actor_type="host",
-            target_type="user",
-            target_id=user["id"],
-            target_label=user["display_name"],
-            reason=args.reason,
-            detail={"host_user": getpass.getuser()},
-        )
+    token = iam.emergency_recovery(user, args.reason, getpass.getuser())
     print(
         f"Recovery for {user['display_name']} <{user['email']}>: sessions ended. One-time reset link, valid "
         f"{iam.setting('reset.minutes')} minutes, shown once:"

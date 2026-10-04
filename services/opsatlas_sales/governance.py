@@ -16,11 +16,11 @@ from difflib import SequenceMatcher
 
 from assistant.governance.accepted import AcceptedStore, issue_key
 from assistant.governance.intelligence import (
-    _LINK,
+    LINK,
     KnowledgeIntelligence,
-    _expansion_matches_acronym,
-    _readability_sentences,
-    _readability_word_count,
+    expansion_matches_acronym,
+    readability_sentences,
+    readability_word_count,
 )
 from assistant.iam.context import acting_id, acting_name
 from assistant.sources.register import ContentReplaced
@@ -92,7 +92,7 @@ def definitions_in(text):
                 break
     for match in re.finditer(r'\b([A-Z]{2,6})\s*\(([^)]{3,80})\)', text):
         acronym, expansion = match.groups()
-        if _expansion_matches_acronym(acronym, expansion.replace('-', ' ')):
+        if expansion_matches_acronym(acronym, expansion.replace('-', ' ')):
             found.append((acronym, expansion.strip()))
     return found
 
@@ -433,9 +433,9 @@ class GovernanceDesk:
                                            for e, t, q in self.corpus_definitions(a)]} for a in names]
         elif issue['check'] == 'readability':
             prose = '\n'.join(line for line in text.splitlines() if not line.lstrip().startswith(('#', '**', '|')))
-            base['examples'] = [' '.join(s.split()) for s in _readability_sentences(prose) if _readability_word_count(s) > 40][:3]
+            base['examples'] = [' '.join(s.split()) for s in readability_sentences(prose) if readability_word_count(s) > 40][:3]
         elif issue['check'] == 'broken_link':
-            base['links'] = [h for h in _LINK.findall(text) if not h.strip().startswith(('http://', 'https://', '/', '#', 'mailto:'))
+            base['links'] = [h for h in LINK.findall(text) if not h.strip().startswith(('http://', 'https://', '/', '#', 'mailto:'))
                              or not h.strip() or 'example.com' in h][:5]
         elif issue['check'] == 'duplicate':
             base.update(source_b_id=issue.get('source_b_id'), source_b_title=issue.get('source_b_title'),
@@ -509,7 +509,7 @@ class GovernanceDesk:
                 else:
                     findings.append({'status': 'not_found', 'acronym': acronym,
                                      'message': f'The sources do not define {acronym}, so it will be recorded as your definition.'})
-                if not _expansion_matches_acronym(acronym, expansion.replace('-', ' ')):
+                if not expansion_matches_acronym(acronym, expansion.replace('-', ' ')):
                     findings.append({'status': 'check', 'acronym': acronym,
                                      'message': f"{expansion} does not spell out {acronym}."})
         if resolution.get('decision') == 'reword' and resolution.get('replacement'):

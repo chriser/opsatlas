@@ -9,7 +9,7 @@ from pathlib import Path
 from ..answer.generator import Generator
 from ..ingestion.store import SectionStore
 from ..retrieval.embedder import Embedder, EmbeddingCache
-from ..retrieval.service import _cosine
+from ..retrieval.service import cosine_similarity
 from ..sources.register import SourceRegister
 
 DUPLICATE_SIMILARITY = 0.92
@@ -93,7 +93,7 @@ class KnowledgeIntelligence:
                                 structural_src[i].add(secs[j][0].id)
                                 structural_src[j].add(secs[i][0].id)
                             continue
-                        sim = _cosine(vecs[i], vecs[j])
+                        sim = cosine_similarity(vecs[i], vecs[j])
                         if sim >= DUPLICATE_SIMILARITY:
                             dup_pairs.append((i, j))
                             dup_src[i].add(secs[j][0].id)
@@ -224,7 +224,7 @@ _US_UK = [("organize", "organise"), ("color", "colour"), ("catalog", "catalogue"
           ("license", "licence"), ("behavior", "behaviour"), ("optimize", "optimise"), ("fulfill", "fulfil")]
 _TERMS = [("email", "e-mail"), ("login", "log in"), ("website", "web site"), ("backend", "back end")]
 _PLACEHOLDER = re.compile(r"\b(TODO|TBD|FIXME|XXX)\b|\?\?\?")
-_LINK = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
+LINK = re.compile(r"\[[^\]]*\]\(([^)]*)\)")
 _ACRONYM_EXPANSION_STOPWORDS = {"a", "an", "and", "for", "in", "of", "or", "the", "to"}
 
 
@@ -249,12 +249,12 @@ def _defined_acronyms(text: str) -> set[str]:
     defined = set(re.findall(r"\(([A-Z]{2,6})\)", text))  # e.g. "...Name (ABC)"
     for match in re.finditer(r"\b([A-Z]{2,6})\b\s*\(([^)]{3,160})\)", text):
         acronym, expansion = match.groups()
-        if _expansion_matches_acronym(acronym, expansion):
+        if expansion_matches_acronym(acronym, expansion):
             defined.add(acronym)
     return defined
 
 
-def _expansion_matches_acronym(acronym: str, expansion: str) -> bool:
+def expansion_matches_acronym(acronym: str, expansion: str) -> bool:
     words = re.findall(r"[A-Za-z]+", expansion)
     initials = "".join(
         word[0].upper()
@@ -265,11 +265,11 @@ def _expansion_matches_acronym(acronym: str, expansion: str) -> bool:
 
 
 def _check_readability(text: str) -> str:
-    long_sentences = [s for s in _readability_sentences(text) if _readability_word_count(s) > 40]
+    long_sentences = [s for s in readability_sentences(text) if readability_word_count(s) > 40]
     return f"{len(long_sentences)} long sentences (40+ words) may be hard to read." if len(long_sentences) >= 3 else ""
 
 
-def _readability_sentences(text: str) -> list[str]:
+def readability_sentences(text: str) -> list[str]:
     prose = _readability_prose(text)
     return [sentence.strip() for sentence in re.split(r"(?<=[.!?])\s+", prose) if sentence.strip()]
 
@@ -294,7 +294,7 @@ def _is_markdown_table_row(line: str) -> bool:
     return line.startswith("|") and line.count("|") >= 2
 
 
-def _readability_word_count(sentence: str) -> int:
+def readability_word_count(sentence: str) -> int:
     return len(re.findall(r"[A-Za-z0-9][A-Za-z0-9'’-]*", sentence))
 
 
@@ -403,7 +403,7 @@ def _check_content_style(text: str) -> str:
 
 
 def _check_broken_link(text: str) -> str:
-    bad = [h for h in _LINK.findall(text)
+    bad = [h for h in LINK.findall(text)
            if not h.strip() or h.strip() in {"#", "TODO"} or "example.com" in h
            or not h.strip().startswith(("http://", "https://", "/", "#", "mailto:"))]
     return f"{len(bad)} empty/placeholder/malformed link target(s) (structural check)." if bad else ""

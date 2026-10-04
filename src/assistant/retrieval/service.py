@@ -23,8 +23,8 @@ class SearchResult(BaseModel):
     history_sha: str | None = None
 
 
-_tokenize = tokenize  # the index and the search tokenise alike
-_cosine = cosine  # kept for the governance intelligence's pairwise comparisons
+word_tokens = tokenize  # the index and the search tokenise alike
+cosine_similarity = cosine  # kept for the governance intelligence's pairwise comparisons
 
 
 # The 0.55 threshold originated from early nomic-embed-text calibration and was
@@ -53,7 +53,7 @@ class RetrievalService:
         self.min_similarity = min_similarity
         self.index = CorpusIndex(register, section_store)  # built once per corpus change (ARCH F7)
 
-    def _relevant(self, lexical_score: float, semantic_score: float | None) -> bool:
+    def is_relevant(self, lexical_score: float, semantic_score: float | None) -> bool:
         # Drop weak matches: by cosine when semantic is available, else require
         # at least one query term (positive BM25).
         if semantic_score is not None:
@@ -76,7 +76,7 @@ class RetrievalService:
         # Rewrite the question into a standalone search query (large-corpus quality lever).
         search_query = self.rewriter.rewrite(query) if self.rewriter is not None else query
 
-        lexical = list(snapshot.bm25.get_scores(_tokenize(search_query)))
+        lexical = list(snapshot.bm25.get_scores(word_tokens(search_query)))
 
         mode = "lexical"
         semantic: list[float] | None = None
@@ -96,12 +96,12 @@ class RetrievalService:
                 semantic = None
                 mode = "lexical"
 
-        order = self._fuse(lexical, semantic)
+        order = self.fuse_scores(lexical, semantic)
         # Gather a larger relevant pool when a reranker can re-order it, else just top_k.
         pool_size = max(top_k, 10) if self.reranker is not None else top_k
         results: list[SearchResult] = []
         for index, score in order:
-            if not self._relevant(lexical[index], semantic[index] if semantic is not None else None):
+            if not self.is_relevant(lexical[index], semantic[index] if semantic is not None else None):
                 continue
             record, section = items[index]
             if not visible(record.id):  # REF S13: never a section the person may not read
@@ -130,7 +130,7 @@ class RetrievalService:
         return results[:top_k], mode
 
     @staticmethod
-    def _fuse(lexical: list[float], semantic: list[float] | None) -> list[tuple[int, float]]:
+    def fuse_scores(lexical: list[float], semantic: list[float] | None) -> list[tuple[int, float]]:
         n = len(lexical)
         if semantic is None:
             order = sorted(range(n), key=lambda i: lexical[i], reverse=True)

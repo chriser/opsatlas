@@ -23,9 +23,9 @@ recommendation (REF S65).
 | A document store's module (`sources.register`, `ingestion.store`, `content.store`) is imported only by today's importers | same | 41 allowed |
 | Tibi's engine (`services.sme_interviewer`) reaches outside itself only as today (its benchmark fixture; the shared conversation contract, claims, foundation, workspace and activity modules) | same | 20 allowed |
 | No new import edge between packages inside a package cycle (today: `ingestion`, `sources`, `process`, `ontology`, `eam`; and `answer`, `retrieval`, `analytics`, `governance`, `evidence`) | same | 18 allowed |
-| No module uses another module's private name (`_x`), by importing it or through the module's name; a package's private names are its own, and Tibi's engine may use its own | same, `PRIVATE_ALLOWED` | 12 allowed |
+| No module uses another module's private name (`_x`), by importing it or through the module's name; a package's private names are its own, and Tibi's engine may use its own | same, `PRIVATE_ALLOWED` | 1 allowed (Tibi's engine) |
 | Each store's file name (89 JSON, JSONL and SQLite names, Tibi's included) is named in code only by its owning module; a new store must be declared with its owner. A name counts wherever it is the last part of a string: `'content.db'`, `'data/ontology.db'`, `f'{root}/content.db'`, also inside a SQLite URI with a query (`'file:content.db?mode=ro'`) | same, `STORE_OWNERS` | 12 stores with allowed exceptions |
-| No reaching into another module's objects' private members in production code (ruff `SLF001`); a mark that no longer suppresses anything (`RUF100`) or a blanket mark (`PGH004`) fails too | `pyproject.toml` | 9 sites on 8 lines, marked `# noqa: SLF001` |
+| No reaching into another module's objects' private members in production code (ruff `SLF001`); a mark that no longer suppresses anything (`RUF100`) or a blanket mark (`PGH004`) fails too | `pyproject.toml` | 3 sites on 2 lines, marked `# noqa: SLF001` |
 
 Tests (`tests/test_boundaries.py`) check each rule against the code, and each check against planted code, so none is
 vacuous; three guards in the guard register prove the checks by switching them off.
@@ -41,7 +41,9 @@ allowed one that has **gone**: remove it from its list, or remove the mark, so t
     - the document stores' importers;
     - the space moves' raw access to the content database;
     - the private calls into the content workflow (`_approve`, `_reject`).
-  - **REF S58 (the Sales knowledge layer)** gives the Sales review history one owner.
+  - **REF S58 (the Sales knowledge layer)** gives the Sales review history one owner. It also takes the Sales content
+    step's write of the records (`knowledge._save`, one marked site), which changes the records' governance notes and
+    so belongs with S58's decisions.
   - **The other store exceptions** are wiring and tooling that name another owner's file. They are kept unless a
     change removes them:
     - the apps building a store at its path;
@@ -50,14 +52,12 @@ allowed one that has **gone**: remove it from its list, or remove the mark, so t
     - the Sales records reading the product corpus;
     - the evaluations and the evidence report naming what they read.
   - **REF S68 #2184** gives public ways in, in place of the other private uses:
-    - the Sales layer's uses of the core:
-      - retrieval: `_cosine`, `_tokenize`, `_relevant`, `_fuse`;
-      - governance intelligence: four names;
-      - access: `_walk`;
-    - the Sales layer's own `_save`;
-    - IAM's four (`_issue`, `_revoke_sessions`, `_session_view`, `_check_session`);
-    - the core's own two: governance intelligence uses retrieval's `_cosine`, and the OAG coverage evaluation uses
-      three helpers of `rag_vs_oag`.
+    - retrieval's `cosine_similarity`, `word_tokens`, `is_relevant`, `fuse_scores`;
+    - governance intelligence's `LINK`, `expansion_matches_acronym`, `readability_sentences`, `readability_word_count`;
+    - access's `walk_routes`;
+    - IAM's `session_view`, its existing `session_by_id` (for the delivery recheck), and `emergency_recovery` (the
+      recovery command's transaction, moved into IAM);
+    - the evaluation's `best_fact_match`, `answer_content_tokens`, `normalise_text`, `REFUSAL_RE`.
   - **Tibi's engine** reads the Sales claims' `_ALLOWED_ACRONYMS`; its next version takes a public name. Its files are
     under its fingerprint.
 - **To add a store:** declare its file name and owning module in `STORE_OWNERS`. Only the owner names the file; others

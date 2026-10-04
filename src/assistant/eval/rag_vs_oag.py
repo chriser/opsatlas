@@ -33,7 +33,7 @@ BenchmarkSplit = Literal["tuning", "holdout"]
 SplitFilter = Literal["all", "tuning", "holdout"]
 ALL_CATEGORIES: tuple[Category, ...] = get_args(Category)
 
-_REFUSAL_RE = re.compile(
+REFUSAL_RE = re.compile(
     r"\b(refuse|cannot|can't|not available|not in (the )?(approved )?(knowledge base|corpus|packs)|"
     r"no .* (available|present|provided)|do not invent|insufficient evidence)\b",
     re.IGNORECASE,
@@ -245,18 +245,18 @@ def evaluate_rag_vs_oag(
 
 
 def score_rag_vs_oag_answer(label: RagVsOagQuestion, result: AnswerResult) -> dict[str, Any]:
-    text = _normalise_text(result.answer)
-    answer_tokens = set(_content_tokens(result.answer))
+    text = normalise_text(result.answer)
+    answer_tokens = set(answer_content_tokens(result.answer))
     fact_details = []
     for fact in label.expected_answer_facts:
         candidates = [fact.text, *fact.aliases]
-        match = _best_fact_match(candidates, text, answer_tokens)
+        match = best_fact_match(candidates, text, answer_tokens)
         fact_details.append({"text": fact.text, **match})
 
     facts_hit = [item["text"] for item in fact_details if item["hit"]]
     facts_missed = [item["text"] for item in fact_details if not item["hit"]]
     if label.category == "out_of_scope":
-        fact_passed = result.refused or bool(_REFUSAL_RE.search(result.answer)) or not facts_missed
+        fact_passed = result.refused or bool(REFUSAL_RE.search(result.answer)) or not facts_missed
     else:
         fact_passed = not result.refused and not facts_missed
     expected_path_hit = _path_matches(label.expected_path, result.answer_path)
@@ -761,11 +761,11 @@ def _path_matches(expected: ExpectedPath, actual: str) -> bool:
     return actual == "oag"
 
 
-def _normalise_text(text: str) -> str:
+def normalise_text(text: str) -> str:
     return " ".join(re.findall(r"[a-z0-9]+", text.lower()))
 
 
-def _best_fact_match(candidates: list[str], answer_text: str, answer_tokens: set[str]) -> dict[str, Any]:
+def best_fact_match(candidates: list[str], answer_text: str, answer_tokens: set[str]) -> dict[str, Any]:
     best = {
         "hit": False,
         "matched_variant": "",
@@ -776,7 +776,7 @@ def _best_fact_match(candidates: list[str], answer_text: str, answer_tokens: set
     for candidate in candidates:
         if not candidate.strip():
             continue
-        normalised_candidate = _normalise_text(candidate)
+        normalised_candidate = normalise_text(candidate)
         if normalised_candidate and normalised_candidate in answer_text:
             return {
                 "hit": True,
@@ -785,7 +785,7 @@ def _best_fact_match(candidates: list[str], answer_text: str, answer_tokens: set
                 "token_coverage": 1.0,
                 "missing_tokens": [],
             }
-        candidate_tokens = _content_tokens(candidate)
+        candidate_tokens = answer_content_tokens(candidate)
         if not candidate_tokens:
             continue
         token_set = set(candidate_tokens)
@@ -815,7 +815,7 @@ def _best_fact_match(candidates: list[str], answer_text: str, answer_tokens: set
     return best
 
 
-def _content_tokens(text: str) -> list[str]:
+def answer_content_tokens(text: str) -> list[str]:
     tokens = [_normalise_token(token) for token in re.findall(r"[a-z0-9]+", text.lower())]
     return [token for token in tokens if token and token not in _STOPWORDS]
 
