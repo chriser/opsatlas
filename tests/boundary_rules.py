@@ -11,10 +11,8 @@ stays true). See docs/ways-of-working/Boundaries.md, which also states what the 
 from __future__ import annotations
 
 import ast
-import io
 import re
 import sys
-import tokenize
 from collections import defaultdict
 from pathlib import Path
 
@@ -299,43 +297,6 @@ def private_violations(found: set[tuple[str, str]], allowed: set | None = None) 
 # A store's file name: a string constant's last path component ('content.db', 'data/ontology.db', or the '/content.db'
 # part of f'{root}/content.db'), also inside a SQLite URI with a query ('file:content.db?mode=ro', REF S65, S59's N1).
 STORE_NAME = re.compile(r"(?:^|[/\\:])([A-Za-z0-9_.\-]+\.(?:json|jsonl|db|sqlite|sqlite3))(?:\?.*)?$")
-
-
-# ---- file-level marks -------------------------------------------------------------------------------------------
-
-# A file-level mark (ruff's file-wide noqa directive with no codes, or naming SLF001) would let every reach-in in its
-# file pass without a mark of its own, unseen by the count of marks (REF S65, S59's N2). Production code has none; the
-# private-member check's own exemptions are in pyproject.toml.
-FILE_MARK = re.compile(r"#\s*(?:ruff|flake8)\s*:\s*noqa(?:\s*:\s*(?P<codes>[A-Za-z]+[0-9]+(?:\s*,\s*[A-Za-z]+[0-9]+)*))?",
-                       re.IGNORECASE)
-
-
-def _comments(source: str):
-    """Each comment of a module, as written (comments only: never a docstring or a string)."""
-    try:
-        for token in tokenize.generate_tokens(io.StringIO(source).readline):
-            if token.type == tokenize.COMMENT:
-                yield token.string
-    except (tokenize.TokenError, IndentationError, SyntaxError):
-        return
-
-
-def file_level_marks(modules: dict[str, tuple[str, bool]], sources: dict[str, str] | None = None) -> list[str]:
-    """Production files (Tibi's engine aside, which the check exempts) with a file-wide mark that is blanket or names
-    SLF001, in any form ruff honours: the ruff or flake8 prefix, indented or not, with words after the codes (REF S65,
-    its independent review's F1). Any comment that reads as such a mark counts, wherever it stands, so the check fails
-    closed. ``sources`` adds files outside the modules (the scripts), by path."""
-    found = []
-    files = {name: source for name, (source, _) in modules.items() if not _inside(name, ENGINE)} | (sources or {})
-    for name, source in sorted(files.items()):
-        for comment in _comments(source):
-            mark = FILE_MARK.search(comment)
-            if mark is None or mark.start() != comment.index("#"):
-                continue
-            codes = (mark.group("codes") or "").upper().replace(" ", "").split(",") if mark.group("codes") else []
-            if not codes or "SLF001" in codes:
-                found.append(f"{name}: {comment.strip()}")
-    return found
 
 
 # Each store's file name, and the module (or package) that owns it: only the owner names it in code. A new store is

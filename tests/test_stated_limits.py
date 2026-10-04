@@ -56,13 +56,13 @@ class _PublishesLanding(SourceRegister):
 class _DeletedMeanwhile(SourceRegister):
     """The same register files, where the source is deleted right after the reader takes its record."""
 
-    deleted = False
+    deleting = deleted = False
 
     def get(self, source_id):
         record = super().get(source_id)
-        if record is not None and not self.deleted:
-            self.deleted = True
-            self.remove(source_id)  # deleted between the reader's two reads
+        if record is not None and not self.deleting:
+            self.deleting = True
+            self.deleted = self.remove(source_id)  # deleted between the reader's two reads
         return record
 
 
@@ -85,6 +85,10 @@ def test_a_reader_holding_a_deleted_sources_record_gets_nothing(approved):
     try:
         read = register.read_record_text(source_id)
     except FileNotFoundError as error:
+        # The limit is the reader's file error on the source it holds, after the source was deleted; any other file
+        # error (the simulation's own delete, another path) is a set-up that no longer holds.
+        if not register.deleted or error.filename != str(register.file_path(source_id)):
+            raise SetupChanged(f"a file error that is not the stated limit: {error}") from None
         raise LimitStillThere(f"a file error: {error}") from None
     assert read == (None, b"")  # nothing: anything else is worse than today, and fails the gate
 
@@ -108,5 +112,7 @@ def test_a_decision_refused_as_already_approved_changes_nothing(approved):
             raise SetupChanged(f"refused for another reason: {refused}") from None
     else:
         raise SetupChanged("the decision on an approved document was not refused")
-    limit(tried == [] and bool(content.store.meta(f"records_pending:{source_id}")),
-          "a refused decision tried the records step again")  # S8: refused, and nothing changed
+    pending = bool(content.store.meta(f"records_pending:{source_id}"))
+    if not tried and not pending:  # the retry was dropped without being tried: worse than the stated limit
+        raise AssertionError("a refused decision dropped the pending records step without trying it")
+    limit(tried == [] and pending, "a refused decision tried the records step again")  # S8: refused, nothing changed

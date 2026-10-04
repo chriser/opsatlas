@@ -10,9 +10,8 @@ nothing in the running app.
 
 They cover all production code: every module under `src/` (the core, `assistant`, and any new package there) and under
 `services/` (the Sales layer and Tibi's engine). Tooling that does not run in the app, `scripts/` and `evaluation/`, is
-outside the import, private-name and store rules in `tests/boundary_rules.py`. The file-level mark check reads the
-scripts too, and ruff's private-member check and its two mark rules cover them. `automation/` and `experiments/` are
-outside the AST checks. Today `scripts/evaluate_evidence.py` takes four private names of `rag_vs_oag`, and the
+outside the import, private-name and store rules in `tests/boundary_rules.py`; ruff's private-member check and its two
+mark rules cover them. `automation/` and `experiments/` are outside the AST checks. Today `scripts/evaluate_evidence.py` takes four private names of `rag_vs_oag`, and the
 scripts name 29 stores owned elsewhere (most in `data_reset.py`, which resets the core's store files). Whether to
 bring the tooling under the rules is parked for the Human, with a recommendation (REF S65).
 
@@ -25,10 +24,10 @@ bring the tooling under the rules is parked for the Human, with a recommendation
 | No new import edge between packages inside a package cycle (today: `ingestion`, `sources`, `process`, `ontology`, `eam`; and `answer`, `retrieval`, `analytics`, `governance`, `evidence`) | same | 18 allowed |
 | No module uses another module's private name (`_x`), by importing it or through the module's name; a package's private names are its own, and Tibi's engine may use its own | same, `PRIVATE_ALLOWED` | 12 allowed |
 | Each store's file name (89 JSON, JSONL and SQLite names, Tibi's included) is named in code only by its owning module; a new store must be declared with its owner. A name counts wherever it is the last part of a string: `'content.db'`, `'data/ontology.db'`, `f'{root}/content.db'`, also inside a SQLite URI with a query (`'file:content.db?mode=ro'`) | same, `STORE_OWNERS` | 12 stores with allowed exceptions |
-| No reaching into another module's objects' private members in production code (ruff `SLF001`); a mark that no longer suppresses anything (`RUF100`) or a blanket mark (`PGH004`) fails too, and so does a file-level mark that is blanket or names `SLF001` (production code and the scripts, `file_level_marks`) | `pyproject.toml` | 9 sites on 8 lines, marked `# noqa: SLF001` |
+| No reaching into another module's objects' private members in production code (ruff `SLF001`); a mark that no longer suppresses anything (`RUF100`) or a blanket mark (`PGH004`) fails too | `pyproject.toml` | 9 sites on 8 lines, marked `# noqa: SLF001` |
 
 Tests (`tests/test_boundaries.py`) check each rule against the code, and each check against planted code, so none is
-vacuous; four guards in the guard register prove the checks by switching them off.
+vacuous; three guards in the guard register prove the checks by switching them off.
 
 ## Allow-lists only shrink
 
@@ -82,11 +81,8 @@ allowed one that has **gone**: remove it from its list, or remove the mark, so t
 
 The checks read the code's text; they do not run it. These forms pass without any check firing. The independent
 reviews' tests pin each one down. Where one is used in production today, it is said below; the others are not used
-(the re-review's scan, 4 October). A change that uses one should say so in its design. Two that S59's re-review found
-are closed (REF S65 #2176): a store named in a SQLite URI, and a file-wide mark for the private-member check. The
-mark check reads comments only and takes every form ruff honours (the ruff or flake8 prefix, indented, words after
-the codes), proven against ruff itself. It fails closed: a comment in another case, or with lower-case codes, is
-flagged too.
+(the re-review's scan, 4 October). A change that uses one should say so in its design. One that S59's re-review found
+is closed (REF S65 #2176): a store named in a SQLite URI.
 
 - **Imports.**
   - An import whose module is computed, such as `import_module(name)` with a variable. An import named by a string
@@ -99,6 +95,11 @@ flagged too.
 - **Private members.**
   - Reached without a dot: `getattr(obj, "_x")`, `vars(obj)["_x"]`.
   - The private members of an object or class inside the engine. Used today: the 24 sites above.
+  - A file-wide or range suppression of the private-member check: ruff honours more forms than a check could list
+    (`# ruff: noqa`, `# flake8: noqa`, codes after other text or separated by spaces or tabs, a doubled `#`,
+    `# ruff: disable[SLF001]`), and the count of marks does not see them. S65 tried to list them and stopped under
+    the stop rule (two reviews found more); a simpler rule, no file-wide or range directive in production code but
+    today's two (`# ruff: noqa: E501` in two activity-model renderers), is with the Human. None exists today.
   - A subclass in another module using its base's private member through `self` or `super()`. Python often treats
     `_x` as "protected", so a design that relies on it should say so.
 - **Store names.**
