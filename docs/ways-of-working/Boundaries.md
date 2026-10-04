@@ -10,10 +10,11 @@ nothing in the running app.
 
 They cover all production code: every module under `src/` (the core, `assistant`, and any new package there) and under
 `services/` (the Sales layer and Tibi's engine). Tooling that does not run in the app, `scripts/` and `evaluation/`, is
-outside the import, private-name and store rules in `tests/boundary_rules.py`; ruff's private-member check and its two
-mark rules cover them. `automation/` and `experiments/` are outside the AST checks. Today `scripts/evaluate_evidence.py` takes four private names of `rag_vs_oag`, and the
-scripts name 29 stores owned elsewhere (most in `data_reset.py`, which resets the core's store files). Whether to
-bring the tooling under the rules is parked for the Human, with a recommendation (REF S65).
+outside the rules in `tests/boundary_rules.py`; ruff's private-member check covers `scripts/`, and its two mark rules
+cover both. `automation/` and `experiments/` are outside the AST checks. Today `scripts/evaluate_evidence.py` takes
+four private names of `rag_vs_oag`, and the scripts name 29 stores owned elsewhere (most in `data_reset.py`, which
+resets the core's store files). Whether to bring the tooling under the rules is parked for the Human, with a
+recommendation (REF S65).
 
 | Rule | Where | Today |
 |---|---|---|
@@ -95,11 +96,13 @@ is closed (REF S65 #2176): a store named in a SQLite URI.
 - **Private members.**
   - Reached without a dot: `getattr(obj, "_x")`, `vars(obj)["_x"]`.
   - The private members of an object or class inside the engine. Used today: the 24 sites above.
-  - A file-wide or range suppression of the private-member check: ruff honours more forms than a check could list
-    (`# ruff: noqa`, `# flake8: noqa`, codes after other text or separated by spaces or tabs, a doubled `#`,
-    `# ruff: disable[SLF001]`), and the count of marks does not see them. S65 tried to list them and stopped under
-    the stop rule (two reviews found more); a simpler rule, no file-wide or range directive in production code but
-    today's two (`# ruff: noqa: E501` in two activity-model renderers), is with the Human. None exists today.
+  - A file-wide or range suppression of the private-member check that names it: `# ruff: noqa: SLF001` or
+    `# flake8: noqa: SLF001`, also behind a doubled `#`, after other text in the comment, or with codes separated by
+    spaces or tabs, and `# ruff: disable[SLF001]` (the blanket `# ruff: noqa` and `# flake8: noqa` fail ruff's
+    PGH004). The count of marks does not see them. S65 tried to list the forms and stopped under the stop rule (two
+    reviews found more). A simpler rule is with the Human: no file-wide or range directive in production code but
+    today's two (`# ruff: noqa: E501` in two activity-model renderers), or let ruff decide (its SLF001 findings with
+    and without `--ignore-noqa` differ only by the listed marks). None exists today.
   - A subclass in another module using its base's private member through `self` or `super()`. Python often treats
     `_x` as "protected", so a design that relies on it should say so.
 - **Store names.**

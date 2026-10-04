@@ -36,7 +36,6 @@ def test_each_store_is_named_only_by_its_owner():
     assert not problems, "\n  ".join(["store ownership:", *problems])
 
 
-
 # ---- the checks catch what they are for (each is proven on planted code, so none is vacuous) -----------------------
 
 def _graph(**sources):
@@ -126,7 +125,6 @@ def test_a_store_named_with_a_folder_or_in_an_f_string_is_caught():
                                          "assistant.answer.x": (text, False)})
         assert rules.store_violations(mentions, owners={"content.db": "assistant.content.store"}, also={}) == [
             "new: assistant.answer.x names content.db, owned by assistant.content.store"], text
-
 
 
 def test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance():

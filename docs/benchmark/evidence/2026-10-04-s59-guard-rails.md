@@ -107,7 +107,8 @@ What was done:
 
 - **Records:** N4 and N5 are fixed on the page, and N1–N3 are stated there as limits. That is a records-only commit,
   so the merged code is the code reviewed.
-- **REF S65 #2176** takes N1 and N2, which are cheap to close. It also takes the decision on bringing the tooling
+- **REF S65 #2176** takes N1 and N2, which are cheap to close. (S65 closed N1; N2 went back to a stated limit under the stop rule: see
+  `docs/ways-of-working/Boundaries.md`.) It also takes the decision on bringing the tooling
   under the rules (N5).
 
 The report is in `research_notes/independent-review-2026-10-04-S59-fixes.md` (local). Its tests are in
