@@ -39,7 +39,7 @@ def test_each_store_is_named_only_by_its_owner():
 def test_the_host_recovery_command_alone_calls_emergency_recovery():
     """REF S70 (S68's IR2): IAM's emergency recovery has no actor and no permission check; only the host's command
     calls it."""
-    problems = rules.sole_caller_violations(MODULES)
+    problems = rules.sole_caller_violations(MODULES) + rules.entry_point_violations(EDGES)
     assert not problems, "\n  ".join(["methods kept for one caller:", *problems])
 
 
@@ -124,20 +124,33 @@ def test_a_private_name_taken_from_another_module_is_caught_and_a_gone_one_must_
 
 def test_another_caller_of_a_method_kept_for_one_is_caught_and_a_gone_caller_must_leave_the_list():
     sole = {"emergency_recovery": ("assistant.iam.service", {"assistant.iam.__main__"})}
+    kept = "class Identity:\n    def emergency_recovery(self):\n        pass\n"
     planted = {
-        "assistant.iam.service": ("class Identity:\n    def emergency_recovery(self):\n        pass\n", False),
+        "assistant.iam.service": (kept + "    def reset(self):\n        return self.emergency_recovery()\n", False),
         "assistant.iam.__main__": ("def recover(iam):\n    iam.emergency_recovery()\n", False),
         "assistant.api.routes_x": ("def f(iam):\n    return iam.emergency_recovery()\n", False),
         "services.opsatlas_sales.y": ("def g(iam):\n    return getattr(iam, 'emergency_recovery')()\n", False),
+        "services.opsatlas_sales.z": ("TARGET = 'assistant.iam.service.Identity.emergency_recovery'\n", False),
         "assistant.api.routes_z": ('def h(iam):\n    """Never calls emergency_recovery."""\n', False),  # prose passes
     }
-    assert rules.sole_caller_violations(planted, sole) == [
+    assert rules.sole_caller_violations(planted, sole) == [  # a wrapper in its own module is another way in
         "new: assistant.api.routes_x names emergency_recovery, kept for ['assistant.iam.__main__']",
-        "new: services.opsatlas_sales.y names emergency_recovery, kept for ['assistant.iam.__main__']"]
-    del planted["assistant.api.routes_x"], planted["services.opsatlas_sales.y"]
-    planted["assistant.iam.__main__"] = ("def recover(iam):\n    pass\n", False)
+        "new: assistant.iam.service names emergency_recovery, kept for ['assistant.iam.__main__']",
+        "new: services.opsatlas_sales.y names emergency_recovery, kept for ['assistant.iam.__main__']",
+        "new: services.opsatlas_sales.z names emergency_recovery, kept for ['assistant.iam.__main__']"]
+    planted = {"assistant.iam.service": ("class Identity:\n    pass\n", False),
+               "assistant.iam.__main__": ("def recover(iam):\n    pass\n", False)}
     assert rules.sole_caller_violations(planted, sole) == [
-        "gone (remove it from SOLE_CALLERS): assistant.iam.__main__ no longer names emergency_recovery"]
+        "gone (remove it from SOLE_CALLERS): assistant.iam.__main__ no longer names emergency_recovery",
+        "gone (update SOLE_CALLERS): assistant.iam.service no longer defines emergency_recovery"]
+
+
+def test_a_module_importing_the_host_recovery_command_is_caught():
+    for text in ("from assistant.iam.__main__ import recover\n", "import importlib\n"
+                 "m = importlib.import_module('assistant.iam.__main__')\n"):
+        edges = rules.import_graph({"assistant.api.x": (text, False), "assistant.iam.__main__": ("", False)})
+        assert rules.entry_point_violations(edges) == [
+            "new: assistant.api.x imports assistant.iam.__main__, which only runs as a command"], text
 
 
 def test_a_store_named_with_a_folder_or_in_an_f_string_is_caught():

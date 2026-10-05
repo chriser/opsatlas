@@ -437,28 +437,45 @@ def store_violations(mentions: dict[str, set[str]], owners: dict | None = None, 
 # ---- a method kept for one caller (REF S70, S68's IR2) ------------------------------------------------------------
 
 # A public method with no actor and no permission check, kept for one caller: (the module that defines it, its callers).
-# `Identity.emergency_recovery` is the host's procedure: the host's recovery command alone may call it.
+# `Identity.emergency_recovery` is the host's procedure: the host's recovery command alone may call it, and nothing
+# imports that command, which runs only as `python -m assistant.iam`.
 SOLE_CALLERS: dict[str, tuple[str, set[str]]] = {
     "emergency_recovery": ("assistant.iam.service", {"assistant.iam.__main__"}),
 }
+ENTRY_POINTS = {"assistant.iam.__main__"}
 
 
 def sole_caller_violations(modules: dict[str, tuple[str, bool]], sole: dict | None = None) -> list[str]:
-    """A production module, other than the method's own and its listed callers, that names one of these methods: an
-    attribute (``iam.emergency_recovery``) or a string that is exactly its name (``getattr(iam, "emergency_recovery")``);
-    and a listed caller that no longer names it."""
+    """A production module, other than the method's listed callers, that names one of these methods: an attribute
+    (``iam.emergency_recovery``), or a string that is its name or ends with ``.`` and its name. Its own module counts too
+    (a wrapper there would be another way in); the definition itself does not. Also: a listed caller that no longer names
+    it, and a defining module that no longer defines it."""
     sole = SOLE_CALLERS if sole is None else sole
     named: dict[str, set[str]] = defaultdict(set)
+    defined: dict[str, set[str]] = defaultdict(set)
     for name, (source, _) in modules.items():
         for node in ast.walk(ast.parse(source)):
             if isinstance(node, ast.Attribute) and node.attr in sole:
                 named[node.attr].add(name)
-            elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in sole:
-                named[node.value].add(name)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                for method in sole:
+                    if node.value == method or node.value.endswith(f".{method}"):
+                        named[method].add(name)
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name in sole:
+                defined[node.name].add(name)
     problems = []
     for method, (home, callers) in sorted(sole.items()):
         problems += [f"new: {module} names {method}, kept for {sorted(callers)}"
-                     for module in sorted(named[method] - callers - {home})]
+                     for module in sorted(named[method] - callers)]
         problems += [f"gone (remove it from SOLE_CALLERS): {module} no longer names {method}"
                      for module in sorted(callers - named[method])]
+        if home not in defined[method]:
+            problems.append(f"gone (update SOLE_CALLERS): {home} no longer defines {method}")
     return problems
+
+
+def entry_point_violations(edges: dict[str, set[str]], entry_points: set | None = None) -> list[str]:
+    """A production module that imports an entry point, such as the host's recovery command."""
+    entry_points = ENTRY_POINTS if entry_points is None else entry_points
+    return [f"new: {module} imports {target}, which only runs as a command" for module, targets in sorted(edges.items())
+            for target in sorted(targets & entry_points)]

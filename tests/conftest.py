@@ -29,6 +29,22 @@ if os.environ.get('OPSATLAS_DISABLE_GUARD'):
 
 import pytest  # noqa: E402
 
+from tests import live_guard as _live_guard  # noqa: E402
+
+# The guard's own proofs switch it off on purpose (tests/guard_register.py).
+_LIVE_GUARD_PROOFS = {'tests never reach a live service or the network (REF S70)',
+                      'the live-service guard is installed in every test (REF S70)'}
+
+
+@pytest.fixture(autouse=True)
+def _the_live_service_guard_stays_installed():
+    """REF S70 (its red team's L3): a test that leaves the guard off fails, and the guard is put back for the next."""
+    yield
+    if os.environ.get('OPSATLAS_DISABLE_GUARD') in _LIVE_GUARD_PROOFS or _live_guard.installed():
+        return
+    _live_guard.install()
+    pytest.fail('the test left the live-service guard off (REF S70)')
+
 
 @pytest.fixture
 def sales_workspace(tmp_path, monkeypatch):

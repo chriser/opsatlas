@@ -349,10 +349,22 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_boundaries.py::"
                   "test_another_caller_of_a_method_kept_for_one_is_caught_and_a_gone_caller_must_leave_the_list"],
     },
-    # Its tests check that it is installed before trying any connection, so its proof reaches nothing live.
+    "no module imports a command's entry point (REF S70)": {
+        "off": lambda: _off("boundary_rules", "entry_point_violations", lambda edges, entry_points=None: []),
+        "tests": ["tests/test_boundaries.py::test_a_module_importing_the_host_recovery_command_is_caught"],
+    },
+    # The refusal switched off while the guard stays installed: its tests stand in for the network, so a connection let
+    # through fails them instead of leaving the process.
     "tests never reach a live service or the network (REF S70)": {
-        "off": lambda: importlib.import_module("tests.live_guard").uninstall(),
+        "off": lambda: _off("tests.live_guard", "refused", lambda address: None),
         "tests": ["tests/test_live_guard.py::test_an_address_off_this_machine_is_refused_at_once",
+                  "tests/test_live_guard.py::test_a_loopback_port_the_test_did_not_open_is_refused",
+                  "tests/test_live_guard.py::test_a_connection_through_asyncio_is_refused_too"],
+    },
+    # Uninstalled: its tests check that it is installed before trying any connection, so this proof reaches nothing live.
+    "the live-service guard is installed in every test (REF S70)": {
+        "off": lambda: importlib.import_module("tests.live_guard").uninstall(),
+        "tests": ["tests/test_live_guard.py::test_uvloop_is_blocked_so_every_loop_is_asyncios",
                   "tests/test_live_guard.py::test_a_port_of_the_tests_own_is_still_reachable"],
     },
     "an approval names the text it approves (REF S23, S8)": {

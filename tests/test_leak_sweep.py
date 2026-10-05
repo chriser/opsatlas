@@ -9,13 +9,12 @@ to be served from a cache; and the same calls made as the administrator do retur
 Nothing leaves the test: outbound connections are refused and the model echoes its prompt, so any evidence it was given
 would be in the answer."""
 import os
-import socket
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from iam_helpers import sign_in
-from test_space_leaks import fill, hermetic, refuse
+from test_space_leaks import fill, hermetic
 
 from assistant.api.access import manifest
 from tests.door_helpers import decide
@@ -37,9 +36,7 @@ POSTS = (("/api/ask", {"q": QUESTION}), ("/api/query", {"q": "payroll exception 
 def acme(tmp_path_factory):
     from assistant.iam.service import Actor
     from services.opsatlas_sales.app import create_sales_app
-    saved = dict(os.environ)
-    real = (socket.create_connection, socket.socket.connect)
-    socket.create_connection, socket.socket.connect = refuse, refuse
+    saved = dict(os.environ)  # the network is refused by the suite's guard (tests/live_guard.py, REF S70)
     os.environ.update({"SME_TIBI_VOICE_URL": "http://127.0.0.1:9", "SALES_GOVERNANCE_AUTO_REVIEW": "0"})
     root = Path(os.path.realpath(tmp_path_factory.mktemp("sweep"))) / "sales"
     try:
@@ -77,7 +74,6 @@ def acme(tmp_path_factory):
                 people[role] = {"Authorization": f"Bearer {sign_in(client, app, email, PW)}", "X-OpsAtlas-Space": "acme"}
             yield client, app, root, head, people, ids
     finally:
-        socket.create_connection, socket.socket.connect = real
         os.environ.clear()
         os.environ.update(saved)
 
