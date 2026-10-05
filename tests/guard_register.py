@@ -177,8 +177,15 @@ GUARDS: dict[str, dict] = {
     "a restriction belongs to the space that holds its resource (REF S13, Bug #2202)": {
         "off": lambda: _method_off("assistant.iam.service", "Identity", "_may_restrict",
                                    lambda self, space_id, resource_type, resource_id, row: True),
-        "tests": ["tests/test_restriction_space.py::test_another_spaces_owner_cannot_lift_a_restriction",
-                  "tests/test_restriction_space.py::test_without_a_resolver_every_change_is_refused"],
+        "tests": ["tests/test_restriction_space.py::test_another_spaces_owner_cannot_lift_a_restriction"],
+    },
+    "no resolver, no change to a restriction (REF S13, Bug #2202, R2-5)": {
+        "off": lambda: _method_off("assistant.iam.service", "Identity", "_held",
+                                   lambda self, space_id, resource_type, resource_id:
+                                   True if self.holds is None else
+                                   False if (self.space(space_id) or {}).get("status") == "archived" else
+                                   self.holds(space_id, resource_type, resource_id)),
+        "tests": ["tests/test_restriction_space.py::test_without_a_resolver_every_change_is_refused"],
     },
     "no taking a restriction from a space that still holds the resource (REF S13, Bug #2202)": {
         "off": lambda: _method_off("assistant.iam.service", "Identity", "_takes_from_holder",

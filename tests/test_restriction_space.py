@@ -462,43 +462,61 @@ def test_restrictions_keep_the_rule_over_random_scenarios(tmp_path):
 
 # ---- one writer, one rule ---------------------------------------------------------------------------------------------
 
-WRITERS = {("src/assistant/iam/service.py", "restrict"), ("src/assistant/iam/service.py", "_move_row")}
+WRITERS = {("src/assistant/iam/service.py", "Identity.restrict"), ("src/assistant/iam/service.py", "Identity._move_row")}
 BARE_NAME = re.compile(r"\s*(?:main\.)?[\"`\[]?resource_policies[\"`\]]?\s*", re.IGNORECASE)
 WRITE_VERB = re.compile(r"\b(?:INSERT|REPLACE|UPDATE|DELETE)\b")
+LEADING_COMMENT = re.compile(r"^\s*(?:--[^\n]*(?:\n|$)|/\*.*?\*/)", re.DOTALL)
 
 
 def _writes_restrictions(text: str) -> bool:
     """A string that hands the table's name on (the store's insert, update and delete take it bare), or holds an SQL
-    statement that writes it: one that starts with a write verb, or a WITH clause ending in one, and names the table."""
+    statement that writes, drops or alters it: one that starts, after any comments, with such a verb, or a WITH clause
+    ending in one, and names the table. Log or error text that reads like one counts too (fail closed)."""
     if BARE_NAME.fullmatch(text):
         return True
     for statement in text.split(";"):
+        while LEADING_COMMENT.match(statement):
+            statement = LEADING_COMMENT.sub("", statement, count=1)
         head = statement.lstrip().upper()
-        if "RESOURCE_POLICIES" in head and (head.startswith(("INSERT", "REPLACE", "UPDATE", "DELETE"))
+        if "RESOURCE_POLICIES" in head and (head.startswith(("INSERT", "REPLACE", "UPDATE", "DELETE", "DROP", "ALTER"))
                                              or head.startswith("WITH") and WRITE_VERB.search(head)):
             return True
     return False
 
 
+def _owners(tree: ast.AST) -> dict[ast.AST, str]:
+    """Each node's enclosing function, qualified by its classes and outer functions ('Identity.restrict'); '<module>'
+    outside any."""
+    owner: dict[ast.AST, str] = {}
+
+    def visit(node: ast.AST, where: str) -> None:
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+                visit(child, f"{where}.{child.name}" if where else child.name)
+            else:
+                owner[child] = where or "<module>"
+                visit(child, where)
+    visit(tree, "")
+    return owner
+
+
 def restriction_writers(sources: dict[str, str]) -> set[tuple[str, str]]:
-    """Each (file, function) whose code writes resource_policies or hands its name on, in any string constant or f-string
-    part; code outside a function counts as '<module>'."""
+    """Each (file, qualified function) whose code writes resource_policies or hands its name on, in any string constant or
+    f-string part; and each one that reaches the conditional update, ``_move_row``, by name."""
     found = set()
     for path, source in sources.items():
         tree = ast.parse(source)
-        owner: dict[ast.AST, str] = {}
-        for fn in (n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))):
-            for inner in ast.walk(fn):
-                owner[inner] = fn.name  # outer functions come first in the walk, so the innermost name wins
+        owner = _owners(tree)
         for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str) and _writes_restrictions(node.value):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and _writes_restrictions(node.value) \
+                    or isinstance(node, ast.Attribute) and node.attr == "_move_row":
                 found.add((path, owner.get(node, "<module>")))
     return found
 
 
 def test_restrict_is_the_only_writer_of_restrictions_and_consults_the_resolver(tmp_path):
-    """Inventory (rule 8): in production code only IAM's restrict, through its conditional update, writes
-    resource_policies, and it asks the resolver before writing."""
+    """Inventory (rule 8): in production code only IAM's restrict writes resource_policies, through its conditional
+    update, which nothing else reaches; and restrict asks the resolver before writing."""
     sources = {str(path.relative_to(ROOT)): path.read_text()
                for base in (ROOT / "src", ROOT / "services") for path in base.rglob("*.py")}
     assert restriction_writers(sources) == WRITERS
@@ -510,7 +528,9 @@ def test_restrict_is_the_only_writer_of_restrictions_and_consults_the_resolver(t
 
 
 def test_the_inventory_catches_every_form_of_a_second_writer():
-    """The code red team's CRT-2: the forms its probe found unseen, and a second writer inside IAM's own service."""
+    """The code red team's CRT-2 and CRT2-1: the forms its probes found unseen, a second writer inside IAM's own service,
+    a nested function that borrows a writer's name, and a second caller of the conditional update."""
+    service = "src/assistant/iam/service.py"
     planted = {
         "a.py": 'def f(db):\n    db.execute("UPDATE OR REPLACE resource_policies SET space_id = ?", ("x",))\n',
         "b.py": 'def f(db):\n    db.execute(\'DELETE FROM main."resource_policies"\')\n',
@@ -518,11 +538,18 @@ def test_the_inventory_catches_every_form_of_a_second_writer():
         "d.py": 'def f(store, kind):\n    store.update(table="resource_policies", where={"resource_type": kind}, values={})\n',
         "e.py": 'def f(db, x):\n    db.execute(f"INSERT INTO resource_policies VALUES ({x})")\n',
         "f.py": 'def f(db):\n    db.execute("WITH t AS (SELECT 1) UPDATE resource_policies SET version = 1")\n',
-        "src/assistant/iam/service.py": 'class Identity:\n    def restrict(self):\n        self.store.insert("resource_policies", {})\n'
-                                        '    def _sneak(self):\n        self.store.run("update resource_policies set space_id = 1")\n',
+        "h.py": 'def f(db):\n    db.execute("-- tidy up\\n/* old rows */ DELETE FROM resource_policies")\n'
+                '    db.execute("DROP TABLE resource_policies")\n',
+        "i.py": 'def f(store):\n    def restrict():\n        store.insert("resource_policies", {})\n    restrict()\n',
+        service: 'class Identity:\n    def restrict(self):\n        self.store.insert("resource_policies", {})\n'
+                 '        self._move_row()\n'
+                 '    def _move_row(self):\n        self.store.run("UPDATE resource_policies SET space_id = 1")\n'
+                 '    def _sneak(self):\n        self.store.run("update resource_policies set space_id = 1")\n'
+                 '    def follow(self):\n        return self._move_row()\n',
         "g.py": 'def f(db):\n    db.execute("SELECT restricted_to FROM resource_policies WHERE updated_at > ?")\n'
                 '    db.executescript("CREATE TABLE IF NOT EXISTS resource_policies (id TEXT);")\n',  # reads and DDL pass
     }
-    assert restriction_writers(planted) == {("a.py", "f"), ("b.py", "f"), ("c.py", "<module>"), ("d.py", "f"),
-                                            ("e.py", "f"), ("f.py", "f"), ("src/assistant/iam/service.py", "restrict"),
-                                            ("src/assistant/iam/service.py", "_sneak")}
+    assert restriction_writers(planted) == {
+        ("a.py", "f"), ("b.py", "f"), ("c.py", "<module>"), ("d.py", "f"), ("e.py", "f"), ("f.py", "f"), ("h.py", "f"),
+        ("i.py", "f.restrict"), (service, "Identity.restrict"), (service, "Identity._move_row"),
+        (service, "Identity._sneak"), (service, "Identity.follow")}
