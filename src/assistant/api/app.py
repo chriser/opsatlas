@@ -322,6 +322,17 @@ def create_app(
     content_service.rebuild_facts = rebuild_ontology_store
     content_service.refresh_processes = lambda: process_registry.build_from_sources(registry)
     app.state.content = content_service
+    iam = getattr(auth_service, "iam", None)
+    if iam is not None and iam.holds is None:
+        # Who holds a document or folder, for a restriction's change (Bug #2202): a lone core holds only its own space's.
+        # A workspace that serves several spaces sets its own resolver over all of them.
+        def holds(space_id: str, resource_type: str, resource_id: str) -> bool:
+            if space_id != app.state.space_id:
+                return False
+            if resource_type == "document":
+                return registry.get(resource_id) is not None
+            return any(group["id"] == resource_id for group in content_service.store.groups())
+        iam.holds = holds
     # Evidence receipts (REF S18): every source has a version from registration, every answer a stored receipt.
     answer_service.receipts = ReceiptStore(registry.base_dir)
     answer_service.version_of = content_service.current_version

@@ -174,6 +174,16 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_bug_2191_diagram_visibility.py::"
                   "test_a_restricted_documents_process_is_not_resolved_for_a_person_outside_its_audience"],
     },
+    "a restriction belongs to the space that holds its resource (REF S13, Bug #2202)": {
+        "off": lambda: _method_off("assistant.iam.service", "Identity", "_may_restrict",
+                                   lambda self, space_id, resource_type, resource_id, row: True),
+        "tests": ["tests/test_restriction_space.py::test_another_spaces_owner_cannot_lift_a_restriction"],
+    },
+    "no taking a restriction from a space that still holds the resource (REF S13, Bug #2202)": {
+        "off": lambda: _method_off("assistant.iam.service", "Identity", "_takes_from_holder",
+                                   lambda self, space_id, resource_type, resource_id, row: False),
+        "tests": ["tests/test_restriction_space.py::test_a_document_held_twice_keeps_its_row_with_the_space_that_wrote_it"],
+    },
     "revoked while prepared (REF S16)": {
         "off": lambda: _off("assistant.api.access", "still_allowed", lambda request, permission: None),
         "tests": ["tests/test_space_leaks.py::test_an_answer_is_withheld_when_access_is_revoked_while_it_is_prepared"],

@@ -13,6 +13,7 @@ import io
 import json
 import re
 import secrets
+import sqlite3
 import unicodedata
 from dataclasses import dataclass
 from datetime import timedelta
@@ -118,6 +119,9 @@ class Identity:
         self.guide_space = guide_space
         self.audit = Audit(store)
         self.policy = PolicyEngine(store)
+        # Who holds a document or folder, set by the app that serves the spaces (Bug #2202, REF S13):
+        # (space_id, resource_type, resource_id) -> True, False, or None when it cannot tell.
+        self.holds = None
         self._solo_existing_spaces()
 
     def _people(self) -> int:
@@ -248,23 +252,58 @@ class Identity:
                 raise IamError("INVALID", "An audience is people (user:<id>) or groups (group:<id>)")
             if entry not in clean:
                 clean.append(entry)
-        before = self.store.one("SELECT restricted_to FROM resource_policies WHERE resource_type = ? AND resource_id = ?",
-                                (resource_type, resource_id))
+        before = self.store.one("SELECT restricted_to, space_id FROM resource_policies WHERE resource_type = ? AND "
+                                "resource_id = ?", (resource_type, resource_id))
+        if not self._may_restrict(space_id, resource_type, resource_id, before):
+            raise IamError("NOT_FOUND", "No such document or folder in this space", 404)
         with self.store.transaction():
             if before is None:
-                self.store.insert("resource_policies", {"resource_type": resource_type, "resource_id": resource_id,
-                                                        "space_id": space_id, "restricted_to": json.dumps(clean),
-                                                        "updated_at": self.store.stamp(), "updated_by": actor.id})
-            else:
-                self.store.run("UPDATE resource_policies SET restricted_to = ?, version = version + 1, updated_at = ?, "
-                               "updated_by = ?, space_id = ? WHERE resource_type = ? AND resource_id = ?",
-                               (json.dumps(clean), self.store.stamp(), actor.id, space_id, resource_type, resource_id))
+                try:
+                    self.store.insert("resource_policies", {"resource_type": resource_type, "resource_id": resource_id,
+                                                            "space_id": space_id, "restricted_to": json.dumps(clean),
+                                                            "updated_at": self.store.stamp(), "updated_by": actor.id})
+                except sqlite3.IntegrityError:  # another space wrote it since the check
+                    raise IamError("CONFLICT", "The restriction changed meanwhile; try again", 409) from None
+            else:  # the row follows its holder, but only from the space the check saw
+                changed = self.store.run(
+                    "UPDATE resource_policies SET restricted_to = ?, version = version + 1, updated_at = ?, updated_by = ?, "
+                    "space_id = ? WHERE resource_type = ? AND resource_id = ? AND space_id = ?",
+                    (json.dumps(clean), self.store.stamp(), actor.id, space_id, resource_type, resource_id,
+                     before["space_id"])).rowcount
+                if changed != 1:
+                    raise IamError("CONFLICT", "The restriction changed meanwhile; try again", 409)
             self.store.bump_policy_version()
             self._audit(actor, "resource.restricted" if clean else "resource.unrestricted", target_type=resource_type,
                         target_id=resource_id, space_id=space_id, reason=reason,
                         before={"restricted_to": json.loads(before["restricted_to"]) if before else []},
                         after={"restricted_to": clean})
         return {"resource_type": resource_type, "resource_id": resource_id, "space_id": space_id, "restricted_to": clean}
+
+    def _held(self, space_id: str, resource_type: str, resource_id: str) -> bool | None:
+        """Whether ``space_id`` holds the resource now: True, False, or None when it cannot tell (no resolver, a store that
+        cannot be read). Unknown counts against a change (Bug #2202)."""
+        if self.holds is None:
+            return None
+        try:
+            return self.holds(space_id, resource_type, resource_id)
+        except Exception:
+            return None
+
+    def _takes_from_holder(self, space_id: str, resource_type: str, resource_id: str, row: dict | None) -> bool:
+        """(b) The row belongs to another space that may still hold the resource (a document held twice): no taking it."""
+        return row is not None and row["space_id"] != space_id and self._held(row["space_id"], resource_type, resource_id) is not False
+
+    def _may_restrict(self, space_id: str, resource_type: str, resource_id: str, row: dict | None) -> bool:
+        """Bug #2202 (REF S13): a resource's restriction is written only for a space that holds the resource now.
+        (a) A holder may set, change or lift it, and the row follows the holder; (b) but may not take it from another space
+        that also still holds it; (c) a space that does not hold it is refused, except the row's own space when no space
+        holds the resource any more (lifting a deleted document's restriction)."""
+        held = self._held(space_id, resource_type, resource_id)
+        if held is True:
+            return not self._takes_from_holder(space_id, resource_type, resource_id, row)
+        if held is None or row is None or row["space_id"] != space_id:
+            return False
+        return all(self._held(space["id"], resource_type, resource_id) is False for space in self.spaces())
 
     # -- users ---------------------------------------------------------------------------------------------------
     def user(self, user_id: str) -> dict | None:
