@@ -26,9 +26,10 @@ recommendation (REF S65).
 | No module uses another module's private name (`_x`), by importing it or through the module's name; a package's private names are its own, and Tibi's engine may use its own | same, `PRIVATE_ALLOWED` | 1 allowed (Tibi's engine) |
 | Each store's file name (89 JSON, JSONL and SQLite names, Tibi's included) is named in code only by its owning module; a new store must be declared with its owner. A name counts wherever it is the last part of a string: `'content.db'`, `'data/ontology.db'`, `f'{root}/content.db'`, also inside a SQLite URI with a query (`'file:content.db?mode=ro'`) | same, `STORE_OWNERS` | 12 stores with allowed exceptions |
 | No reaching into another module's objects' private members in production code (ruff `SLF001`); a mark that no longer suppresses anything (`RUF100`) or a blanket mark (`PGH004`) fails too | `pyproject.toml` | 3 sites on 2 lines, marked `# noqa: SLF001` |
+| A method kept for one caller is named by no other module: IAM's `emergency_recovery` (no actor, no permission check) only by the host's recovery command, `assistant.iam.__main__` (REF S70, S68's IR2). An attribute or a string that is exactly its name counts | `tests/boundary_rules.py`, `SOLE_CALLERS` | 1 method, 1 caller |
 
 Tests (`tests/test_boundaries.py`) check each rule against the code, and each check against planted code, so none is
-vacuous; three guards in the guard register prove the checks by switching them off.
+vacuous; four guards in the guard register prove the checks by switching them off.
 
 ## Allow-lists only shrink
 

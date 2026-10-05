@@ -344,6 +344,17 @@ GUARDS: dict[str, dict] = {
         "tests": ["tests/test_boundaries.py::test_store_ownership_catches_a_second_writer_an_undeclared_store_and_a_stale_allowance",
                   "tests/test_boundaries.py::test_a_store_named_with_a_folder_or_in_an_f_string_is_caught"],
     },
+    "a method kept for one caller is called by no other module (REF S70, S68's IR2)": {
+        "off": lambda: _off("boundary_rules", "sole_caller_violations", lambda modules, sole=None: []),
+        "tests": ["tests/test_boundaries.py::"
+                  "test_another_caller_of_a_method_kept_for_one_is_caught_and_a_gone_caller_must_leave_the_list"],
+    },
+    # Its tests check that it is installed before trying any connection, so its proof reaches nothing live.
+    "tests never reach a live service or the network (REF S70)": {
+        "off": lambda: importlib.import_module("tests.live_guard").uninstall(),
+        "tests": ["tests/test_live_guard.py::test_an_address_off_this_machine_is_refused_at_once",
+                  "tests/test_live_guard.py::test_a_port_of_the_tests_own_is_still_reachable"],
+    },
     "an approval names the text it approves (REF S23, S8)": {
         "off": lambda: _method_off("assistant.sources.register", "SourceRegister", "names_text",
                                    lambda self, source_id, sha: None),

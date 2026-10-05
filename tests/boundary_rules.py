@@ -432,3 +432,33 @@ def store_violations(mentions: dict[str, set[str]], owners: dict | None = None, 
     for store in sorted(set(owners) - set(mentions)):
         problems.append(f"gone (remove it from STORE_OWNERS): {store} is no longer named anywhere")
     return problems
+
+
+# ---- a method kept for one caller (REF S70, S68's IR2) ------------------------------------------------------------
+
+# A public method with no actor and no permission check, kept for one caller: (the module that defines it, its callers).
+# `Identity.emergency_recovery` is the host's procedure: the host's recovery command alone may call it.
+SOLE_CALLERS: dict[str, tuple[str, set[str]]] = {
+    "emergency_recovery": ("assistant.iam.service", {"assistant.iam.__main__"}),
+}
+
+
+def sole_caller_violations(modules: dict[str, tuple[str, bool]], sole: dict | None = None) -> list[str]:
+    """A production module, other than the method's own and its listed callers, that names one of these methods: an
+    attribute (``iam.emergency_recovery``) or a string that is exactly its name (``getattr(iam, "emergency_recovery")``);
+    and a listed caller that no longer names it."""
+    sole = SOLE_CALLERS if sole is None else sole
+    named: dict[str, set[str]] = defaultdict(set)
+    for name, (source, _) in modules.items():
+        for node in ast.walk(ast.parse(source)):
+            if isinstance(node, ast.Attribute) and node.attr in sole:
+                named[node.attr].add(name)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str) and node.value in sole:
+                named[node.value].add(name)
+    problems = []
+    for method, (home, callers) in sorted(sole.items()):
+        problems += [f"new: {module} names {method}, kept for {sorted(callers)}"
+                     for module in sorted(named[method] - callers - {home})]
+        problems += [f"gone (remove it from SOLE_CALLERS): {module} no longer names {method}"
+                     for module in sorted(callers - named[method])]
+    return problems

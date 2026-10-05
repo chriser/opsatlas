@@ -10,6 +10,12 @@ os.environ.setdefault('SALES_GOVERNANCE_AUTO_REVIEW', '0')
 # or rewrites a data/ folder in the checkout (OpsAtlas Classic keeps the old knowledge base in its own folder).
 os.environ['KP_DATA_DIR'] = tempfile.mkdtemp(prefix='opsatlas-test-data-')
 
+# Tests never reach a live service or the network (REF S70, tests/live_guard.py). Installed before any test module is
+# imported, and before a guard is switched off below, so its own proof can switch it off.
+from tests.live_guard import install as _refuse_live_services  # noqa: E402
+
+_refuse_live_services()
+
 # Every guard proven (REF F10): tests/test_guards_proven.py runs a guard's tests with this switch, which turns the guard
 # off before any test module imports the code, and requires them to fail.
 if os.environ.get('OPSATLAS_DISABLE_GUARD'):
