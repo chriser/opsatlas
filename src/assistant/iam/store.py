@@ -111,6 +111,15 @@ def parse(text: str | None) -> datetime | None:
     return datetime.fromisoformat(text) if text else None
 
 
+# A group never changes space (REF S13, Bug #2205): a restriction may name only its own space's groups, so a group that
+# moved would carry the control of an audience to another space. Enforced by the store itself, whatever writes to it.
+GROUPS_KEEP_THEIR_SPACE = """
+CREATE TRIGGER IF NOT EXISTS groups_keep_their_space BEFORE UPDATE OF space_id, boundary ON groups
+WHEN NEW.space_id IS NOT OLD.space_id OR NEW.boundary IS NOT OLD.boundary
+BEGIN SELECT RAISE(ABORT, 'a group never changes space'); END;
+"""
+
+
 class IamStore:
     def __init__(self, path: str | Path | None = None, clock: Callable[[], datetime] | None = None) -> None:
         self.path = Path(path) if path else None
@@ -129,6 +138,7 @@ class IamStore:
             self._conn.execute("PRAGMA foreign_keys=ON")
             self._conn.execute("PRAGMA busy_timeout=10000")
             self._conn.executescript(SCHEMA)
+            self._conn.executescript(GROUPS_KEEP_THEIR_SPACE)
             if self._conn.execute("SELECT COUNT(*) FROM schema_version").fetchone()[0] == 0:
                 self._conn.execute("INSERT INTO schema_version (version) VALUES (?)", (SCHEMA_VERSION,))
             if self._conn.execute("SELECT COUNT(*) FROM policy_versions").fetchone()[0] == 0:

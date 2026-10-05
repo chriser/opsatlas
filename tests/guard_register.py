@@ -212,6 +212,17 @@ GUARDS: dict[str, dict] = {
                             lambda cores, space_id, resource_type, resource_id: True),
         "tests": ["tests/test_restriction_space.py::test_another_space_cannot_restrict_a_resource_it_does_not_hold"],
     },
+    "an audience names only its own space's groups (REF S13, Bug #2205)": {
+        "off": lambda: _method_off("assistant.iam.service", "Identity", "_may_name_group",
+                                   lambda self, space_id, group_id: self.store.one(
+                                       "SELECT 1 FROM groups WHERE id = ? AND deleted_at IS NULL", (group_id,)) is not None),
+        "tests": ["tests/test_restriction_audience.py::test_another_spaces_group_cannot_join_a_restriction",
+                  "tests/test_restriction_audience.py::test_which_groups_an_audience_may_name"],
+    },
+    "a group never changes space (REF S13, Bug #2205)": {
+        "off": lambda: _off("assistant.iam.store", "GROUPS_KEEP_THEIR_SPACE", ""),
+        "tests": ["tests/test_restriction_audience.py::test_a_group_never_changes_space"],
+    },
     "a lone core holds only its own space's documents and folders (REF S13, Bug #2202)": {
         "off": lambda: _off("assistant.api.app", "_core_holds",
                             lambda app, registry, content, space_id, resource_type, resource_id: True),

@@ -249,7 +249,7 @@ class Identity:
             if kind == "user":
                 self._existing(key)
             elif kind == "group":
-                if self.store.one("SELECT 1 FROM groups WHERE id = ? AND deleted_at IS NULL", (key,)) is None:
+                if not self._may_name_group(space_id, key):
                     raise IamError("NOT_FOUND", "No such group", 404)
             else:
                 raise IamError("INVALID", "An audience is people (user:<id>) or groups (group:<id>)")
@@ -279,6 +279,12 @@ class Identity:
                         before={"restricted_to": json.loads(before["restricted_to"]) if before else []},
                         after={"restricted_to": clean})
         return {"resource_type": resource_type, "resource_id": resource_id, "space_id": space_id, "restricted_to": clean}
+
+    def _may_name_group(self, space_id: str, group_id: str) -> bool:
+        """Bug #2205 (REF S13): an audience names only a live group of the path's space, whose members are managed in that
+        space. Another space's group, or a platform group, reads as unknown."""
+        return self.store.one("SELECT 1 FROM groups WHERE id = ? AND deleted_at IS NULL AND space_id = ?",
+                              (group_id, space_id)) is not None
 
     def _move_row(self, resource_type: str, resource_id: str, from_space: str, values: tuple) -> bool:
         """The row's change: (restricted_to, updated_at, updated_by, space_id), applied only if the row's space is still the
