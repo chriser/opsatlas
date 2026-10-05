@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
 import re
 import secrets
 import sqlite3
@@ -23,6 +24,8 @@ from . import roles as seeds
 from .audit import Audit
 from .policy import AuthorizationContext, Decision, PolicyEngine
 from .store import IamStore, parse
+
+_log = logging.getLogger("assistant.iam")
 
 DEFAULT_SETTINGS: dict[str, int] = {
     "session.idle_minutes": 30,
@@ -262,16 +265,14 @@ class Identity:
                     self.store.insert("resource_policies", {"resource_type": resource_type, "resource_id": resource_id,
                                                             "space_id": space_id, "restricted_to": json.dumps(clean),
                                                             "updated_at": self.store.stamp(), "updated_by": actor.id})
-                except sqlite3.IntegrityError:  # another space wrote it since the check
+                except sqlite3.IntegrityError:
+                    if self.store.one("SELECT 1 FROM resource_policies WHERE resource_type = ? AND resource_id = ?",
+                                      (resource_type, resource_id)) is None:
+                        raise  # not a row written meanwhile: a real fault
                     raise IamError("CONFLICT", "The restriction changed meanwhile; try again", 409) from None
-            else:  # the row follows its holder, but only from the space the check saw
-                changed = self.store.run(
-                    "UPDATE resource_policies SET restricted_to = ?, version = version + 1, updated_at = ?, updated_by = ?, "
-                    "space_id = ? WHERE resource_type = ? AND resource_id = ? AND space_id = ?",
-                    (json.dumps(clean), self.store.stamp(), actor.id, space_id, resource_type, resource_id,
-                     before["space_id"])).rowcount
-                if changed != 1:
-                    raise IamError("CONFLICT", "The restriction changed meanwhile; try again", 409)
+            elif not self._move_row(resource_type, resource_id, before["space_id"],
+                                    (json.dumps(clean), self.store.stamp(), actor.id, space_id)):
+                raise IamError("CONFLICT", "The restriction changed meanwhile; try again", 409)
             self.store.bump_policy_version()
             self._audit(actor, "resource.restricted" if clean else "resource.unrestricted", target_type=resource_type,
                         target_id=resource_id, space_id=space_id, reason=reason,
@@ -279,14 +280,28 @@ class Identity:
                         after={"restricted_to": clean})
         return {"resource_type": resource_type, "resource_id": resource_id, "space_id": space_id, "restricted_to": clean}
 
+    def _move_row(self, resource_type: str, resource_id: str, from_space: str, values: tuple) -> bool:
+        """The row's change: (restricted_to, updated_at, updated_by, space_id), applied only if the row's space is still the
+        one the check saw (Bug #2202, R2-2), so the row follows its holder. False if it changed meanwhile."""
+        return self.store.run(
+            "UPDATE resource_policies SET restricted_to = ?, version = version + 1, updated_at = ?, updated_by = ?, "
+            "space_id = ? WHERE resource_type = ? AND resource_id = ? AND space_id = ?",
+            (*values, resource_type, resource_id, from_space)).rowcount == 1
+
     def _held(self, space_id: str, resource_type: str, resource_id: str) -> bool | None:
         """Whether ``space_id`` holds the resource now: True, False, or None when it cannot tell (no resolver, a store that
-        cannot be read). Unknown counts against a change (Bug #2202)."""
+        cannot be read). Unknown counts against a change (Bug #2202). An archived space serves no one, so it holds nothing
+        a restriction protects, and blocks no space that holds the resource (the code red team's CRT-1)."""
         if self.holds is None:
             return None
+        space = self.space(space_id)
+        if space is not None and space["status"] == "archived":
+            return False
         try:
             return self.holds(space_id, resource_type, resource_id)
         except Exception:
+            _log.warning("Who holds %s %s in %s could not be told; the restriction's change is refused", resource_type,
+                         resource_id, space_id, exc_info=True)
             return None
 
     def _takes_from_holder(self, space_id: str, resource_type: str, resource_id: str, row: dict | None) -> bool:

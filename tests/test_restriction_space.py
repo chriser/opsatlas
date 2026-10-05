@@ -9,7 +9,6 @@ The design: docs/benchmark/evidence/2026-10-05-bug-2202.md. Hermetic: no network
 from __future__ import annotations
 
 import ast
-import random
 import re
 from pathlib import Path
 
@@ -19,6 +18,8 @@ from assistant.iam.service import Actor, IamError, Identity
 from assistant.iam.store import IamStore
 from tests.door_helpers import decide
 from tests.iam_helpers import sign_in
+from tests.scenarios import Run, explore
+from tests.test_space_leaks import hermetic, refuse
 
 PW = "walnut harbour lantern seventeen"
 GUIDE, PLAYBOOK = "product-guide", "sales-playbook"
@@ -59,6 +60,10 @@ def reads(ws, headers: dict, space: str, source_id: str) -> int:
     return ws.client.get(f"/api/content/documents/{source_id}", headers={**headers, "X-OpsAtlas-Space": space}).status_code
 
 
+def audit_count(iam) -> int:
+    return iam.store.one("SELECT COUNT(*) AS n FROM audit_events")["n"]
+
+
 # ---- through the app ------------------------------------------------------------------------------------------------
 
 def test_another_spaces_owner_cannot_lift_a_restriction(sales_workspace):
@@ -69,8 +74,11 @@ def test_another_spaces_owner_cannot_lift_a_restriction(sales_workspace):
     _, pia = person(ws, "pia@example.test", "Pia", GUIDE, "product_owner")
     _, olga = person(ws, "olga@example.test", "Olga", ws.space, "space_owner")
     assert reads(ws, pia, GUIDE, doc) == 404
+    iam = ws.app.state.auth.iam
+    trail, version = audit_count(iam), iam.store.policy_version()
     lifted = put(ws, ws.space, "document", doc, [], headers=olga)
     assert lifted.status_code == 404
+    assert (audit_count(iam), iam.store.policy_version()) == (trail, version)  # nothing changed, no audit event
     assert row(ws, "document", doc)["space_id"] == GUIDE
     assert reads(ws, pia, GUIDE, doc) == 404  # the restriction stands
 
@@ -162,18 +170,66 @@ def test_a_deleted_folders_restriction_is_lifted_by_its_own_space_only(sales_wor
     assert row(ws, "folder", folder) == {"space_id": ws.space, "restricted_to": "[]"}
 
 
-def test_an_archived_space_cannot_tell_so_a_deleted_documents_restriction_waits(sales_workspace):
-    """An archived space keeps its data but has no core, so the workspace cannot tell what it holds; that counts against
-    the change (R2-5). Restored, it can tell again."""
-    ws = sales_workspace
+def beta(ws) -> str:
+    """A second organisation space, hermetic like the first."""
     assert ws.client.post("/api/spaces", json={"name": "Beta"}).status_code == 200
+    hermetic(ws.app.state.cores["beta"])
+    return "beta"
+
+
+def space_document(ws, space: str, text: bytes = b"# Rollout\n\nBravo is the second plan.\n") -> str:
+    """Upload, ingest and approve a document in ``space`` through the routes; its source id."""
+    headers = {"X-OpsAtlas-Space": space}
+    up = ws.client.post("/api/sources/upload", files={"file": ("rollout.md", text, "text/markdown")}, headers=headers)
+    assert up.status_code == 200, up.text
+    source_id = up.json()["id"] if "id" in up.json() else up.json()["source"]["id"]
+    assert ws.client.post(f"/api/sources/{source_id}/ingest", headers=headers).status_code == 200
+    assert decide(ws.client, source_id, headers=headers).status_code == 200
+    return source_id
+
+
+def archive(ws, space: str, status: str = "archived") -> None:
+    assert ws.client.patch(f"/api/spaces/{space}", json={"status": status}).status_code == 200
+
+
+def test_an_archived_origin_does_not_block_the_space_that_now_holds_the_document(sales_workspace):
+    """The code red team's CRT-1: Beta restricts its document, transfers it to Acme, and is archived. An archived space
+    serves no one, so it holds nothing: Acme, which holds the document now, restricts it, and the row follows."""
+    ws = sales_workspace
+    doc = space_document(ws, beta(ws))
+    assert put(ws, "beta", "document", doc, [f"user:{admin_id(ws)}"]).status_code == 200
+    moved = ws.client.post("/api/spaces/transfer", json={"source_id": doc, "to": ws.space})
+    assert moved.status_code == 200, moved.text
+    archive(ws, "beta")
+    assert put(ws, ws.space, "document", doc, [f"user:{admin_id(ws)}"], headers=ws.headers).status_code == 200
+    assert row(ws, "document", doc)["space_id"] == ws.space
+    assert put(ws, "beta", "document", doc, []).status_code == 404  # nothing is done in an archived space
+
+
+def test_a_misfiled_row_under_an_archived_space_is_taken_back_by_the_holder(sales_workspace):
+    """CRT-1, the go-live case: a guide row misfiled under a space by the original bug stays recoverable when that space
+    is archived."""
+    ws = sales_workspace
+    doc = guide_document(ws)
+    iam = ws.app.state.auth.iam
+    iam.store.insert("resource_policies", {"resource_type": "document", "resource_id": doc, "space_id": beta(ws),
+                                           "restricted_to": "[]", "updated_at": iam.store.stamp(), "updated_by": None})
+    archive(ws, "beta")
+    assert put(ws, GUIDE, "document", doc, [f"user:{admin_id(ws)}"]).status_code == 200
+    assert row(ws, "document", doc)["space_id"] == GUIDE
+
+
+def test_an_archived_space_holds_nothing_so_a_deleted_documents_restriction_can_be_lifted(sales_workspace):
+    """With Beta archived, no space holds Acme's deleted document, so Acme may still lift its restriction (c)."""
+    ws = sales_workspace
+    beta(ws)
     doc = ws.document(b"# Pricing\n\nAlpha is the first plan.\n")
     assert put(ws, ws.space, "document", doc, [f"user:{admin_id(ws)}"], headers=ws.headers).status_code == 200
     assert ws.client.delete(f"/api/sources/{doc}", headers=ws.headers).status_code in (200, 204)
-    assert ws.client.patch("/api/spaces/beta", json={"status": "archived"}).status_code == 200
-    assert put(ws, ws.space, "document", doc, [], headers=ws.headers).status_code == 404
-    assert ws.client.patch("/api/spaces/beta", json={"status": "active"}).status_code == 200
+    archive(ws, "beta")
     assert put(ws, ws.space, "document", doc, [], headers=ws.headers).status_code == 200
+    archive(ws, "beta", "active")
+    assert put(ws, ws.space, "document", doc, [f"user:{admin_id(ws)}"], headers=ws.headers).status_code == 200
 
 
 def test_a_lone_core_restricts_only_its_own_spaces_documents_and_folders(tmp_path, monkeypatch):
@@ -187,7 +243,6 @@ def test_a_lone_core_restricts_only_its_own_spaces_documents_and_folders(tmp_pat
     from assistant.api.app import create_app
     from assistant.api.auth import AuthService
     from assistant.sources.register import SourceRegister
-    from tests.test_space_leaks import hermetic, refuse
     monkeypatch.setattr(os, "environ", os.environ.copy())
     monkeypatch.setattr(socket, "create_connection", refuse)
     monkeypatch.setattr(socket.socket, "connect", refuse)
@@ -237,9 +292,11 @@ def test_a_document_held_twice_keeps_its_row_with_the_space_that_wrote_it(tmp_pa
 
 def test_without_a_resolver_every_change_is_refused(tmp_path):
     iam, admin = _iam(tmp_path, None)
-    with pytest.raises(IamError):
+    trail = audit_count(iam)
+    with pytest.raises(IamError) as refused:
         iam.restrict(admin, "a", "document", "d1", [])
-    assert iam.store.all("SELECT * FROM resource_policies") == []
+    assert refused.value.status == 404
+    assert iam.store.all("SELECT * FROM resource_policies") == [] and audit_count(iam) == trail
 
 
 
@@ -287,84 +344,185 @@ def test_a_row_written_between_the_check_and_the_write_answers_conflict(tmp_path
     iam.holds = meanwhile(lambda: iam.store.insert("resource_policies", {
         "resource_type": "document", "resource_id": "d1", "space_id": "b", "restricted_to": "[]",
         "updated_at": stamp(), "updated_by": None}))
+    trail, version = audit_count(iam), iam.store.policy_version()
     with pytest.raises(IamError) as inserted:
         iam.restrict(admin, "a", "document", "d1", [f"user:{admin.id}"])
     assert inserted.value.status == 409
+    assert (audit_count(iam), iam.store.policy_version()) == (trail, version)
     iam.holds = lambda space, kind, rid: space == "a"
     iam.restrict(admin, "a", "document", "d1", [f"user:{admin.id}"])  # the holder takes it: b no longer holds it
     iam.holds = meanwhile(lambda: iam.store.run("UPDATE resource_policies SET space_id = 'c' WHERE resource_id = 'd1'"))
+    trail, version = audit_count(iam), iam.store.policy_version()
     with pytest.raises(IamError) as moved:
         iam.restrict(admin, "a", "document", "d1", [])
     assert moved.value.status == 409
+    assert (audit_count(iam), iam.store.policy_version()) == (trail, version)
     assert iam.store.one("SELECT space_id, restricted_to FROM resource_policies WHERE resource_id = 'd1'") == {
         "space_id": "c", "restricted_to": f'["user:{admin.id}"]'}
 
-def _allowed(holdings, rows, space, rid) -> bool:
-    """The rule, written independently of IAM's code: (a), (b), (c)."""
-    holder = rid in holdings[space]
+
+def _allowed(holdings, blind, archived, rows, space, rid) -> bool:
+    """The rule, written independently of IAM's code: (a), (b), (c). Nothing is done in an archived space, and it holds
+    nothing; a space that cannot tell counts against the change."""
+    def held(s):
+        if s in archived:
+            return False
+        return None if s in blind else rid in holdings[s]
+    if space in archived:
+        return False
     owner = rows.get(rid)
-    if holder:
-        return not (owner is not None and owner != space and rid in holdings[owner])
-    return owner == space and not any(rid in held for held in holdings.values())
+    if held(space) is True:
+        return not (owner is not None and owner != space and held(owner) is not False)
+    if held(space) is None or owner != space:
+        return False
+    return all(held(s) is False for s in holdings)
 
 
-@pytest.mark.parametrize("seed", range(40))
-def test_restrictions_keep_the_rule_over_random_scenarios(tmp_path, seed):
-    """Seeded: documents appear, move, are held twice and are deleted across three spaces, and every space tries to
-    restrict or lift them. After each try, IAM's answer and the row's space match the rule (REF S13, Bug #2202)."""
-    rnd = random.Random(seed)
-    holdings = {"a": set(), "b": set(), "c": set()}
-    iam, admin = _iam(tmp_path / str(seed), holdings)
-    rows: dict[str, str] = {}
-    for _ in range(60):
-        rid = rnd.choice(["d1", "d2", "d3"])
-        step = rnd.choice(["add", "move", "copy", "delete", "restrict", "restrict", "restrict"])
-        if step == "add":
-            holdings[rnd.choice("abc")].add(rid)
-        elif step == "move":
-            for held in holdings.values():
-                held.discard(rid)
-            holdings[rnd.choice("abc")].add(rid)
-        elif step == "copy":
-            holdings[rnd.choice("abc")].add(rid)  # held twice, as an interrupted move leaves it
-        elif step == "delete":
-            for held in holdings.values():
-                held.discard(rid)
-        else:
-            space, audience = rnd.choice("abc"), rnd.choice([[], [f"user:{admin.id}"]])
-            expected = _allowed(holdings, rows, space, rid)
-            try:
-                iam.restrict(admin, space, "document", rid, audience)
-                done = True
-            except IamError as refused:
-                assert refused.status == 404, refused.message
-                done = False
-            assert done == expected, (seed, step, space, rid, holdings, rows)
-            if done:
+def test_restrictions_keep_the_rule_over_random_scenarios(tmp_path):
+    """Seeded (tests/scenarios.py, 2,000 runs by default): documents appear, move, are held twice and are deleted across
+    three spaces; rows are misfiled as before the fix; spaces are archived and restored, stop being able to tell, or
+    fail; and every space tries to restrict or lift. After each step IAM's answer, the row's space, the audit trail and
+    the policy version match an independent statement of the rule (REF S13, Bug #2202). A failure prints the seed that
+    replays it."""
+    iam, admin = _iam(tmp_path, None)
+    holdings: dict[str, set[str]] = {"a": set(), "b": set(), "c": set()}
+    blind: set[str] = set()
+    failing: set[str] = set()
+    archived: set[str] = set()
+
+    def holds(space, kind, rid):
+        if space in failing:
+            raise OSError("the store cannot be read")
+        return None if space in blind else rid in holdings[space]
+    iam.holds = holds
+
+    def one_run(run: Run) -> None:
+        for held in holdings.values():
+            held.clear()
+        for space in archived:
+            iam.register_space(space, space.upper(), "organisation")
+        blind.clear()
+        failing.clear()
+        archived.clear()
+        iam.store.run("DELETE FROM resource_policies")
+        rows: dict[str, str] = {}
+        for _ in range(25):
+            rid, space = run.rng.choice(["d1", "d2", "d3"]), run.rng.choice("abc")
+            kind = run.rng.choice(["add", "move", "copy", "delete", "misfile", "blind", "fail", "see", "archive",
+                                   "restore", "restrict", "restrict", "restrict", "restrict"])
+            run.step(kind, f"{space} {rid}")
+            if kind == "add":
+                holdings[space].add(rid)
+            elif kind == "move":  # a Transfer: the document leaves every space and arrives in one
+                for held in holdings.values():
+                    held.discard(rid)
+                holdings[space].add(rid)
+            elif kind == "copy":  # held twice, as an interrupted move leaves it (Bug #2186)
+                holdings[space].add(rid)
+            elif kind == "delete":
+                for held in holdings.values():
+                    held.discard(rid)
+            elif kind == "misfile":  # a row written before the fix, for a space whether or not it holds the document
+                iam.store.run("DELETE FROM resource_policies WHERE resource_id = ?", (rid,))
+                iam.store.insert("resource_policies", {"resource_type": "document", "resource_id": rid, "space_id": space,
+                                                       "restricted_to": "[]", "updated_at": iam.store.stamp(),
+                                                       "updated_by": None})
                 rows[rid] = space
+            elif kind == "blind":  # a space whose core cannot answer
+                blind.add(space)
+            elif kind == "fail":  # a store that cannot be read
+                failing.add(space)
+            elif kind == "see":
+                blind.discard(space)
+                failing.discard(space)
+            elif kind in ("archive", "restore"):
+                iam.register_space(space, space.upper(), "organisation", "archived" if kind == "archive" else "active")
+                (archived.add if kind == "archive" else archived.discard)(space)
+            else:
+                expected = _allowed(holdings, blind | failing, archived, rows, space, rid)
+                trail, version = audit_count(iam), iam.store.policy_version()
+                try:
+                    iam.restrict(admin, space, "document", rid, run.rng.choice([[], [f"user:{admin.id}"]]))
+                    done = True
+                except IamError as refused:
+                    run.promise("a refusal is 404", refused.status == 404, refused.message)
+                    done = False
+                run.promise("the answer follows the rule", done == expected,
+                            f"{space} {rid}: expected {expected}; held {holdings}; cannot tell {blind | failing}; "
+                            f"archived {archived}; rows {rows}")
+                run.promise("one audit event for a change, none for a refusal", audit_count(iam) - trail == int(done))
+                run.promise("the policy version moves only with a change", iam.store.policy_version() - version == int(done))
+                if done:
+                    rows[rid] = space
             stored = iam.store.one("SELECT space_id FROM resource_policies WHERE resource_id = ?", (rid,))
-            assert (stored["space_id"] if stored else None) == rows.get(rid)
+            run.promise("the row's space is its last writer's", (stored["space_id"] if stored else None) == rows.get(rid),
+                        f"{rid}: stored {stored}, expected {rows.get(rid)}")
+    assert explore("restrictions follow their holder (Bug #2202)", one_run) > 0
 
 
 # ---- one writer, one rule ---------------------------------------------------------------------------------------------
 
+WRITERS = {("src/assistant/iam/service.py", "restrict"), ("src/assistant/iam/service.py", "_move_row")}
+BARE_NAME = re.compile(r"\s*(?:main\.)?[\"`\[]?resource_policies[\"`\]]?\s*", re.IGNORECASE)
+WRITE_VERB = re.compile(r"\b(?:INSERT|REPLACE|UPDATE|DELETE)\b")
+
+
+def _writes_restrictions(text: str) -> bool:
+    """A string that hands the table's name on (the store's insert, update and delete take it bare), or holds an SQL
+    statement that writes it: one that starts with a write verb, or a WITH clause ending in one, and names the table."""
+    if BARE_NAME.fullmatch(text):
+        return True
+    for statement in text.split(";"):
+        head = statement.lstrip().upper()
+        if "RESOURCE_POLICIES" in head and (head.startswith(("INSERT", "REPLACE", "UPDATE", "DELETE"))
+                                             or head.startswith("WITH") and WRITE_VERB.search(head)):
+            return True
+    return False
+
+
+def restriction_writers(sources: dict[str, str]) -> set[tuple[str, str]]:
+    """Each (file, function) whose code writes resource_policies or hands its name on, in any string constant or f-string
+    part; code outside a function counts as '<module>'."""
+    found = set()
+    for path, source in sources.items():
+        tree = ast.parse(source)
+        owner: dict[ast.AST, str] = {}
+        for fn in (n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))):
+            for inner in ast.walk(fn):
+                owner[inner] = fn.name  # outer functions come first in the walk, so the innermost name wins
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Constant) and isinstance(node.value, str) and _writes_restrictions(node.value):
+                found.add((path, owner.get(node, "<module>")))
+    return found
+
+
 def test_restrict_is_the_only_writer_of_restrictions_and_consults_the_resolver(tmp_path):
-    """Inventory (rule 8): no production module writes resource_policies but IAM's service, and its one writer asks the
-    resolver before writing."""
-    write = re.compile(r"\b(INSERT\s+(OR\s+\w+\s+)?INTO|REPLACE\s+INTO|UPDATE|DELETE\s+FROM)\s+resource_policies\b",
-                       re.IGNORECASE)
-    writers = []
-    for base in (ROOT / "src", ROOT / "services"):
-        for path in base.rglob("*.py"):
-            for node in ast.walk(ast.parse(path.read_text())):
-                if isinstance(node, ast.Call) and getattr(node.func, "attr", "") in ("insert", "update", "delete", "upsert") \
-                        and node.args and isinstance(node.args[0], ast.Constant) and node.args[0].value == "resource_policies":
-                    writers.append(str(path.relative_to(ROOT)))
-                elif isinstance(node, ast.Constant) and isinstance(node.value, str) and write.search(node.value):
-                    writers.append(str(path.relative_to(ROOT)))
-    assert sorted(set(writers)) == ["src/assistant/iam/service.py"], writers
+    """Inventory (rule 8): in production code only IAM's restrict, through its conditional update, writes
+    resource_policies, and it asks the resolver before writing."""
+    sources = {str(path.relative_to(ROOT)): path.read_text()
+               for base in (ROOT / "src", ROOT / "services") for path in base.rglob("*.py")}
+    assert restriction_writers(sources) == WRITERS
     asked = []
     iam, admin = _iam(tmp_path, None)
     iam.holds = lambda space, kind, rid: asked.append((space, kind, rid)) or True
     iam.restrict(admin, "a", "document", "d1", [])
     assert asked and asked[0] == ("a", "document", "d1")
+
+
+def test_the_inventory_catches_every_form_of_a_second_writer():
+    """The code red team's CRT-2: the forms its probe found unseen, and a second writer inside IAM's own service."""
+    planted = {
+        "a.py": 'def f(db):\n    db.execute("UPDATE OR REPLACE resource_policies SET space_id = ?", ("x",))\n',
+        "b.py": 'def f(db):\n    db.execute(\'DELETE FROM main."resource_policies"\')\n',
+        "c.py": 'TABLE = "resource_policies"\n\ndef f(store):\n    store.insert(TABLE, {})\n',
+        "d.py": 'def f(store, kind):\n    store.update(table="resource_policies", where={"resource_type": kind}, values={})\n',
+        "e.py": 'def f(db, x):\n    db.execute(f"INSERT INTO resource_policies VALUES ({x})")\n',
+        "f.py": 'def f(db):\n    db.execute("WITH t AS (SELECT 1) UPDATE resource_policies SET version = 1")\n',
+        "src/assistant/iam/service.py": 'class Identity:\n    def restrict(self):\n        self.store.insert("resource_policies", {})\n'
+                                        '    def _sneak(self):\n        self.store.run("update resource_policies set space_id = 1")\n',
+        "g.py": 'def f(db):\n    db.execute("SELECT restricted_to FROM resource_policies WHERE updated_at > ?")\n'
+                '    db.executescript("CREATE TABLE IF NOT EXISTS resource_policies (id TEXT);")\n',  # reads and DDL pass
+    }
+    assert restriction_writers(planted) == {("a.py", "f"), ("b.py", "f"), ("c.py", "<module>"), ("d.py", "f"),
+                                            ("e.py", "f"), ("f.py", "f"), ("src/assistant/iam/service.py", "restrict"),
+                                            ("src/assistant/iam/service.py", "_sneak")}

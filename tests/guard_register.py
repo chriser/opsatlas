@@ -177,12 +177,38 @@ GUARDS: dict[str, dict] = {
     "a restriction belongs to the space that holds its resource (REF S13, Bug #2202)": {
         "off": lambda: _method_off("assistant.iam.service", "Identity", "_may_restrict",
                                    lambda self, space_id, resource_type, resource_id, row: True),
-        "tests": ["tests/test_restriction_space.py::test_another_spaces_owner_cannot_lift_a_restriction"],
+        "tests": ["tests/test_restriction_space.py::test_another_spaces_owner_cannot_lift_a_restriction",
+                  "tests/test_restriction_space.py::test_without_a_resolver_every_change_is_refused"],
     },
     "no taking a restriction from a space that still holds the resource (REF S13, Bug #2202)": {
         "off": lambda: _method_off("assistant.iam.service", "Identity", "_takes_from_holder",
                                    lambda self, space_id, resource_type, resource_id, row: False),
         "tests": ["tests/test_restriction_space.py::test_a_document_held_twice_keeps_its_row_with_the_space_that_wrote_it"],
+    },
+    "an archived space holds nothing a restriction protects (REF S13, Bug #2202, CRT-1)": {
+        "off": lambda: _method_off("assistant.iam.service", "Identity", "_held",
+                                   lambda self, space_id, resource_type, resource_id:
+                                   None if self.holds is None else self.holds(space_id, resource_type, resource_id)),
+        "tests": ["tests/test_restriction_space.py::test_an_archived_origin_does_not_block_the_space_that_now_holds_the_document",
+                  "tests/test_restriction_space.py::test_a_misfiled_row_under_an_archived_space_is_taken_back_by_the_holder"],
+    },
+    "a restriction's write applies only while the row's space is the one checked (REF S13, Bug #2202, R2-2)": {
+        "off": lambda: _method_off("assistant.iam.service", "Identity", "_move_row",
+                                   lambda self, resource_type, resource_id, from_space, values: self.store.run(
+                                       "UPDATE resource_policies SET restricted_to = ?, version = version + 1, updated_at = ?, "
+                                       "updated_by = ?, space_id = ? WHERE resource_type = ? AND resource_id = ?",
+                                       (*values, resource_type, resource_id)).rowcount == 1),
+        "tests": ["tests/test_restriction_space.py::test_a_row_written_between_the_check_and_the_write_answers_conflict"],
+    },
+    "the workspace tells who holds a resource from the path space's own core (REF S13, Bug #2202)": {
+        "off": lambda: _off("services.opsatlas_sales.app", "_space_holds",
+                            lambda cores, space_id, resource_type, resource_id: True),
+        "tests": ["tests/test_restriction_space.py::test_another_space_cannot_restrict_a_resource_it_does_not_hold"],
+    },
+    "a lone core holds only its own space's documents and folders (REF S13, Bug #2202)": {
+        "off": lambda: _off("assistant.api.app", "_core_holds",
+                            lambda app, registry, content, space_id, resource_type, resource_id: True),
+        "tests": ["tests/test_restriction_space.py::test_a_lone_core_restricts_only_its_own_spaces_documents_and_folders"],
     },
     "revoked while prepared (REF S16)": {
         "off": lambda: _off("assistant.api.access", "still_allowed", lambda request, permission: None),

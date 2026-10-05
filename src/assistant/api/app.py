@@ -82,6 +82,15 @@ def _load_dotenv(path: str | Path = ".env") -> None:
         os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
 
 
+def _core_holds(app, registry, content, space_id: str, resource_type: str, resource_id: str) -> bool:
+    """Who holds a document or folder, for a restriction's change (Bug #2202): a lone core holds only its own space's."""
+    if space_id != app.state.space_id:
+        return False
+    if resource_type == "document":
+        return registry.get(resource_id) is not None
+    return any(group["id"] == resource_id for group in content.store.groups())
+
+
 def create_app(
     register: SourceRegister | None = None,
     auth: AuthService | None = None,
@@ -324,15 +333,10 @@ def create_app(
     app.state.content = content_service
     iam = getattr(auth_service, "iam", None)
     if iam is not None and iam.holds is None:
-        # Who holds a document or folder, for a restriction's change (Bug #2202): a lone core holds only its own space's.
-        # A workspace that serves several spaces sets its own resolver over all of them.
-        def holds(space_id: str, resource_type: str, resource_id: str) -> bool:
-            if space_id != app.state.space_id:
-                return False
-            if resource_type == "document":
-                return registry.get(resource_id) is not None
-            return any(group["id"] == resource_id for group in content_service.store.groups())
-        iam.holds = holds
+        # Who holds a document or folder (Bug #2202). A workspace that serves several spaces sets its own resolver over all
+        # of them (services/opsatlas_sales/app.py).
+        iam.holds = lambda space_id, resource_type, resource_id: _core_holds(app, registry, content_service, space_id,
+                                                                             resource_type, resource_id)
     # Evidence receipts (REF S18): every source has a version from registration, every answer a stored receipt.
     answer_service.receipts = ReceiptStore(registry.base_dir)
     answer_service.version_of = content_service.current_version

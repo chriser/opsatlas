@@ -52,6 +52,18 @@ def create_sales_app(root=None):
         return _build(root)
 
 
+def _space_holds(cores, space_id, resource_type, resource_id):
+    """Who holds a document or folder, for a restriction's change (Bug #2202): whichever core serves the request answers
+    for the space in its path, from that space's own core, read live (a space created later is known). IAM answers for an
+    archived space before asking; a space with no core cannot tell (None counts against the change)."""
+    core = cores.get(space_id)
+    if core is None:
+        return None
+    if resource_type == 'document':
+        return core.state.register.get(resource_id) is not None
+    return any(group['id'] == resource_id for group in core.state.content.store.groups())
+
+
 def _build(root):
     from .service_principals import ServicePrincipals
     principals = ServicePrincipals(root)  # the sidecars, each with its own credential (REF S12)
@@ -112,17 +124,9 @@ def _build(root):
             build_core(space['id'])
     app.state.spaces, app.state.cores = spaces, cores
 
-    def holds(space_id, resource_type, resource_id):
-        """Who holds a document or folder, for a restriction's change (Bug #2202): whichever core serves the request
-        answers for the space in its path, from that space's own core, read live (a space created later is known); an
-        archived or unknown space cannot tell (None counts against the change)."""
-        core = app.state.cores.get(space_id)
-        if core is None:
-            return None
-        if resource_type == 'document':
-            return core.state.register.get(resource_id) is not None
-        return any(group['id'] == resource_id for group in core.state.content.store.groups())
-    auth.iam.holds = holds  # over the guide core's own-space resolver, set when it was built
+    # Over the guide core's own-space resolver, set when it was built (Bug #2202): the workspace answers for every space.
+    auth.iam.holds = lambda space_id, resource_type, resource_id: _space_holds(app.state.cores, space_id, resource_type,
+                                                                               resource_id)
     from .spaces import SpaceRouter
     app.add_middleware(SpaceRouter, cores=cores)  # inside the host and activity checks added below
     # The activity log (OBS F1): every request, what the page did and Tibi's socket, for diagnosing what happened.
